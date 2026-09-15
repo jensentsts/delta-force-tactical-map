@@ -48,14 +48,16 @@ interface Edge {
   minY: number
   maxX: number
   maxY: number
+  /** 该边属于哪一个环（rings 数组下标）。 */
+  ringIndex: number
 }
 
-function toEdge(a: LngLat, b: LngLat, project: ProjectFn): Edge | null {
+function toEdge(a: LngLat, b: LngLat, project: ProjectFn, ringIndex: number): Edge | null {
   const ap = project(a)
   const bp = project(b)
   if (Math.hypot(bp.x - ap.x, bp.y - ap.y) < MIN_EDGE_LENGTH_PX) return null
   return {
-    a, b, ap, bp,
+    a, b, ap, bp, ringIndex,
     minX: Math.min(ap.x, bp.x), minY: Math.min(ap.y, bp.y),
     maxX: Math.max(ap.x, bp.x), maxY: Math.max(ap.y, bp.y),
   }
@@ -96,17 +98,26 @@ function edgeCoveredBy(e: Edge, other: Edge, tolerance: number): boolean {
  * 采用**对称判定**：e1 覆盖 e2 或 e2 覆盖 e1，都视为重叠，两条一起抵消。
  * 这样即使一侧被拆成多段、另一侧是一条长边，也能正确抵消。
  *
+ * **只在"不同环之间"抵消**（关键）：
+ * 真实数据里有些活动区多边形是"自相接触"的——同一个顶点在环里出现 3~4 次，
+ * 边界在某处折返并与自己重叠（断层 S1 攻方活动区 67 点里有 22 个重复顶点、
+ * 烬区 S1 有 17 个，而正常的地图如斗兽场只有 1 个）。若允许同环内部互相抵消，
+ * 这些本来各自需要画出来的边会被成对抹掉，实测**整个环的边 100% 被抵消**，
+ * 边界完全消失——这正是"断层、烬区（以及断轨）非交战区边界绘制异常、且不同
+ * 阶段表现不同"的原因：重复顶点的数量逐阶段变化，被抹掉的比例也就不同。
+ * 因此比较时要求 `ringIndex` 不同，环内部的自身重叠一律保留。
+ *
  * 返回值同时给出边数组与共享集合，二者引用同一批对象——调用方**必须**用这里
  * 返回的数组做过滤，否则重新构造的 Edge 对象无法被 Set 命中（引用不相等）。
  */
 function collectSharedEdges(rings: Ring[], project: ProjectFn, tolerance: number): { edges: Edge[]; shared: Set<Edge> } {
   const edges: Edge[] = []
-  for (const ring of rings) {
+  rings.forEach((ring, ringIndex) => {
     for (let i = 0; i < ring.length; i++) {
-      const edge = toEdge(ring[i], ring[(i + 1) % ring.length], project)
+      const edge = toEdge(ring[i], ring[(i + 1) % ring.length], project, ringIndex)
       if (edge) edges.push(edge)
     }
-  }
+  })
   const shared = new Set<Edge>()
   // 边界数量在千级以内，简单双重循环 + 包围盒早退足够；
   // boxesNear 会把绝大多数无关边对直接跳过。
@@ -114,6 +125,8 @@ function collectSharedEdges(rings: Ring[], project: ProjectFn, tolerance: number
     for (let j = i + 1; j < edges.length; j++) {
       const e1 = edges[i]
       const e2 = edges[j]
+      // 同一个环内部的重叠（自相接触多边形）不参与抵消，见上方说明
+      if (e1.ringIndex === e2.ringIndex) continue
       if (shared.has(e1) && shared.has(e2)) continue
       if (!boxesNear(e1, e2, tolerance)) continue
       if (edgeCoveredBy(e1, e2, tolerance) || edgeCoveredBy(e2, e1, tolerance)) {
