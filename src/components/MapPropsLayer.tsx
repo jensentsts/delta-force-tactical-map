@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Marker, Tooltip } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import * as L from 'leaflet'
 import type { MapProp, PropVisibility } from '../types'
 import { MAP_PROPS } from '../config/pointsStages'
@@ -61,10 +62,10 @@ export default function MapPropsLayer({ mapId, visible, propVis, interactive, pr
         if (!(propVis[p.name] ?? true)) return null
         return (
           <Marker
+      pane={layerPane('mapPropPane')}
             key={`prop-${mapId}-${i}-${p.icon}`}
             position={[p.lat, p.lng]}
             icon={propIcon(p.name, p.icon)}
-            zIndexOffset={520}
             interactive={interactive}
           >
             {/* 绘制工具激活时不绑定 tooltip，道具名称提示消失 */}

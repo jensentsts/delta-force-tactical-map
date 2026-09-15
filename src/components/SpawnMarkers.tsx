@@ -1,5 +1,6 @@
 import { Fragment, useMemo } from 'react'
 import { Marker, useMap } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import * as L from 'leaflet'
 import type { Side, StageConfig } from '../types'
 import { POINT_ICON_BASE } from '../config/points'
@@ -131,9 +132,9 @@ export default function SpawnMarkers({
       {entries.map((e, i) => (
         <Fragment key={e.uid || `spawn-${stage.id}-${i}`}>
           <Marker
+      pane={layerPane('spawnPane')}
             position={[e.pos[0], e.pos[1]]}
             icon={makeIcon(e.theme, e.label, e.vehicleDeploy)}
-            zIndexOffset={600}
             // 绘制工具激活时禁用交互：复活点图标不拦截 mousedown
             interactive={interactive}
             eventHandlers={{

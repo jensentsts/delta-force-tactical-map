@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Marker, Popup, Tooltip } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import * as L from 'leaflet'
 import type { ModeVehicleRefreshPoint, ModeVehicleRefreshRule, TacticalBattleContext } from '../types'
 import { refreshTriggerLabel } from '../utils/vehicleRefreshRules'
@@ -83,12 +84,12 @@ export default function VehicleRefreshLayer({
       if (pointRules.length === 0) return null
       return (
         <Marker
+      pane={layerPane('vehicleRefreshPane')}
           key={point.uid}
           position={[point.lat, point.lng]}
           icon={refreshPointIcon(pointRules, context, used, stages, currentStageIndex)}
           interactive={interactive}
           bubblingMouseEvents={false}
-          zIndexOffset={650}
         >
           <Tooltip direction="top" offset={[0, -16]}>{point.name} · {pointRules.length} 条刷新规则</Tooltip>
           <Popup className="vehicle-refresh-popup" minWidth={290} maxWidth={360}>

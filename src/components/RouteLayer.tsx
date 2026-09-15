@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CircleMarker, Marker, Polyline, Rectangle, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import { ensureMapLayerPanes, layerPane } from '../config/mapLayers'
 import * as L from 'leaflet'
 import type { BuildingUnit, OperatorTeam, OperatorUnit, Side, TacticalRoute, TacticalRouteTarget, TeamMarker, VehicleItem } from '../types'
 import { ORDER_STATUS_OPTIONS, orderStatusLabel, orderTypeOf, routeVisual } from '../config/routes'
@@ -475,11 +476,11 @@ function SelectedRouteEditor({ route, interactive, showRouteLabels, view, operat
       />
       {interactive && (
         <Marker
+      pane={layerPane('routePane')}
           ref={labelToggleMarkerRef}
           position={labelTogglePosition}
           icon={routeLabelToggleIcon(route.showLabel !== false)}
           interactive
-          zIndexOffset={1300}
           eventHandlers={{
             click: (event) => {
               L.DomEvent.stopPropagation(event)
@@ -490,11 +491,11 @@ function SelectedRouteEditor({ route, interactive, showRouteLabels, view, operat
       )}
       {showRouteLabels && route.showLabel !== false && (
         <Marker
+      pane={layerPane('routePane')}
           position={renderedLabelPosition}
           icon={routeLabelIcon(route, route.color, view, operators)}
           interactive={interactive}
           draggable={interactive}
-          zIndexOffset={1250}
           eventHandlers={{
             click: (e) => {
               L.DomEvent.stopPropagation(e)
@@ -511,24 +512,26 @@ function SelectedRouteEditor({ route, interactive, showRouteLabels, view, operat
           }}
         />
       )}
-      <Polyline positions={renderedWaypoints} pathOptions={{ ...visual, interactive: false, className: 'route-selected-line' }} />
+      <Polyline
+      pane={layerPane('routePane')} positions={renderedWaypoints} pathOptions={{ ...visual, interactive: false, className: 'route-selected-line' }} />
       {platform.kind === 'android' && (
         <Polyline
           positions={renderedWaypoints}
           pathOptions={{ color: teamColor, weight: 24, opacity: 0, interactive, bubblingMouseEvents: false, className: 'route-hit-area route-selected-hit-area' }}
-          pane="routeSelectedHitPane"
+          pane={layerPane('routeSelectedHitPane')}
           eventHandlers={{ click: insertWaypoint } as unknown as L.LeafletEventHandlerFnMap}
         />
       )}
-      <Marker position={renderedWaypoints.at(-1)!} icon={routeArrowIcon({ ...route, waypoints: renderedWaypoints }, visual.color, mapBearing)} interactive={false} zIndexOffset={950} />
+      <Marker
+      pane={layerPane('routePane')} position={renderedWaypoints.at(-1)!} icon={routeArrowIcon({ ...route, waypoints: renderedWaypoints }, visual.color, mapBearing)} interactive={false} />
       {rawRenderedWaypoints.map((point, index) => (
         <Marker
+      pane={layerPane('routePane')}
           key={`${route.uid}-${index}`}
           position={point}
           icon={waypointIcon(index, route.waypoints.length, visual.color, teamColor, route.anchorMode)}
           draggable={interactive && !branchPicking && (index > 0 || route.anchorMode === 'free')}
           bubblingMouseEvents={false}
-          zIndexOffset={1100}
           eventHandlers={{
             click: (e) => {
               L.DomEvent.stopPropagation(e)
@@ -560,11 +563,11 @@ function SelectedRouteEditor({ route, interactive, showRouteLabels, view, operat
       ))}
       {route.anchorMode !== 'branch' && (
         <Marker
+      pane={layerPane('routePane')}
           position={routeCenter(renderedWaypoints)}
           icon={routeMoveIcon(visual.color, teamColor)}
           draggable={interactive}
           bubblingMouseEvents={false}
-          zIndexOffset={1200}
           eventHandlers={{
             click: (e) => L.DomEvent.stopPropagation(e),
             dragstart: (e) => {
@@ -605,10 +608,8 @@ function SelectedRouteEditor({ route, interactive, showRouteLabels, view, operat
 export default function RouteLayer({ routes, view, teams, operators, vehicles, buildings, snapTargets, draftSource, selectedUid, branchPicking, interactive, showRouteLabels, onSelect, onBranchPoint, onDraftEnd, onCreate, onPatch, onDelete, onMoveAnchor }: RouteLayerProps) {
   const map = useMap()
   useEffect(() => {
-    if (!map.getPane('routeSelectedHitPane')) {
-      const pane = map.createPane('routeSelectedHitPane', map.getPane('overlayPane') ?? undefined)
-      pane.style.zIndex = '550'
-    }
+    // pane 的创建与 z-index 由 config/mapLayers 的顺序表统一决定（兜底调用）。
+    ensureMapLayerPanes(map)
   }, [map])
   const [mapBearing, setMapBearing] = useState(() => map.getBearing?.() ?? 0)
   useEffect(() => {
@@ -1055,6 +1056,7 @@ export default function RouteLayer({ routes, view, teams, operators, vehicles, b
         return (
           <Fragment key={route.uid}>
             <Polyline
+      pane={layerPane('routePane')}
               ref={(layer) => {
                 if (layer) routeHitAreasRef.current.set(route.uid, layer)
                 else routeHitAreasRef.current.delete(route.uid)
@@ -1084,6 +1086,7 @@ export default function RouteLayer({ routes, view, teams, operators, vehicles, b
             </Polyline>
             {platform.kind !== 'android' && selected && hoveredRouteUid === route.uid && selectedTooltipPosition && (
               <Marker
+      pane={layerPane('routePane')}
                 position={selectedTooltipPosition}
                 icon={L.divIcon({ className: 'route-tooltip-anchor', iconSize: [1, 1], iconAnchor: [0, 0] })}
                 interactive={false}
@@ -1095,19 +1098,21 @@ export default function RouteLayer({ routes, view, teams, operators, vehicles, b
               </Marker>
             )}
             {!selected && (
-              <Polyline positions={renderedWaypoints} pathOptions={{ ...visual, interactive: false }} />
+              <Polyline
+      pane={layerPane('routePane')} positions={renderedWaypoints} pathOptions={{ ...visual, interactive: false }} />
             )}
-            {!selected && <Marker position={renderedWaypoints.at(-1)!} icon={routeArrowIcon({ ...route, waypoints: renderedWaypoints }, visual.color, mapBearing)} interactive={false} zIndexOffset={700} />}
+            {!selected && <Marker
+      pane={layerPane('routePane')} position={renderedWaypoints.at(-1)!} icon={routeArrowIcon({ ...route, waypoints: renderedWaypoints }, visual.color, mapBearing)} interactive={false} />}
             {!selected && route.waypoints.slice(1, -1).map((point, offset) => {
               const index = offset + 1
               return (
               <Marker
+      pane={layerPane('routePane')}
                 key={`${route.uid}-passive-${index}`}
                 position={rawRenderedWaypoints[index] ?? point}
                 icon={passiveWaypointIcon(index, visual.color, teamColor)}
                 interactive={interactive}
                 draggable={interactive}
-                zIndexOffset={720}
                 eventHandlers={{
                   click: (e) => {
                     L.DomEvent.stopPropagation(e)
@@ -1154,11 +1159,11 @@ export default function RouteLayer({ routes, view, teams, operators, vehicles, b
               )
             })}
             {!selected && showRouteLabels && route.showLabel !== false && <Marker
+      pane={layerPane('routePane')}
               position={route.labelPosition ?? routeLabelPosition(renderedWaypoints)}
               icon={routeLabelIcon(route, route.color, view, operators)}
               interactive={interactive}
               draggable={interactive}
-              zIndexOffset={760}
               eventHandlers={{
                 click: (e) => {
                   L.DomEvent.stopPropagation(e)
@@ -1190,19 +1195,23 @@ export default function RouteLayer({ routes, view, teams, operators, vehicles, b
 
       {draftContext && draftPoints.length > 0 && (
         <>
-          <Polyline positions={draftPoints} pathOptions={{ color: teamOf(draftContext.team).color, weight: 4, dashArray: '8 6', opacity: 0.95 }} />
+          <Polyline
+      pane={layerPane('routePane')} positions={draftPoints} pathOptions={{ color: teamOf(draftContext.team).color, weight: 4, dashArray: '8 6', opacity: 0.95 }} />
           {/* 鼠标跟随预览：最后一个节点 → 当前光标（浅色虚线，与已确立路径区分） */}
           {draftHover && (
             <Polyline
+      pane={layerPane('routePane')}
               positions={[draftPoints[draftPoints.length - 1], draftHover]}
               pathOptions={{ color: teamOf(draftContext.team).color, weight: 3, dashArray: '3 7', opacity: 0.5 }}
               interactive={false}
             />
           )}
           {draftPoints.map((point, index) => (
-            <CircleMarker key={`draft-${index}`} center={point} radius={index === 0 ? 6 : 4} pathOptions={{ color: teamOf(draftContext.team).color, fillColor: '#111719', fillOpacity: 1, weight: 2 }} />
+            <CircleMarker
+      pane={layerPane('routePane')} key={`draft-${index}`} center={point} radius={index === 0 ? 6 : 4} pathOptions={{ color: teamOf(draftContext.team).color, fillColor: '#111719', fillOpacity: 1, weight: 2 }} />
           ))}
           <Marker
+      pane={layerPane('routePane')}
             position={draftPoints[0]}
             icon={waypointIcon(
               0,

@@ -48,6 +48,7 @@ import MapPropsLayer from './MapPropsLayer'
 import type { LayerVisibility, PropVisibility } from '../types'
 import { platform } from '../platform'
 import { installCanvasKeyboard, type KeyboardUnitKind } from '../utils/canvasKeyboard'
+import { ensureMapLayerPanes, layerPane } from '../config/mapLayers'
 import VehicleRefreshLayer, { type RuntimeVehicleRefreshPoint, type RuntimeVehicleRefreshRule } from './VehicleRefreshLayer'
 import type { StageDeploy } from '../config/deployVehicles'
 import { rangeProgressStyle } from '../utils/rangeStyle'
@@ -482,7 +483,20 @@ function CinematicBattleHighlights({ stage }: { stage: string }) {
     map.on('move zoom resize', report)
     return () => { map.off('move zoom resize', report) }
   }, [map, points, stage])
-  return <>{points.map(({ kind, pos, label }) => <Marker key={kind} position={pos} interactive={false} zIndexOffset={1800} icon={L.divIcon({ className: 'cinematic-battle-marker-wrap', html: `<div class="cinematic-battle-marker ${kind}"><i></i><span>${label}</span></div>`, iconSize: [1, 1], iconAnchor: [0, 0] })} />)}</>
+  return <>{points.map(({ kind, pos, label }) => <Marker key={kind} position={pos} pane={layerPane('fireLinePane')} interactive={false} icon={L.divIcon({ className: 'cinematic-battle-marker-wrap', html: `<div class="cinematic-battle-marker ${kind}"><i></i><span>${label}</span></div>`, iconSize: [1, 1], iconAnchor: [0, 0] })} />)}</>
+}
+
+/**
+ * 按 config/mapLayers 的顺序表创建全部自定义图层 pane。
+ * 必须是 MapContainer 的子组件才能拿到 map 实例；在图层渲染前完成创建，
+ * 因此放在 MapContainer 的第一个子元素位置。
+ */
+function MapLayerPanes() {
+  const map = useMap()
+  useEffect(() => {
+    ensureMapLayerPanes(map)
+  }, [map])
+  return null
 }
 
 /** 地图实例就绪 / 视角切换后的同步（视口、边界） */
@@ -650,7 +664,7 @@ function RouteEditorTrigger({ route, onOpen, onDelete }: { route: TacticalRoute;
       ref={markerRef}
       position={position}
       icon={icon}
-      zIndexOffset={1250}
+      pane={layerPane('routePane')}
       keyboard={false}
       eventHandlers={{
         mousedown: (event) => {
@@ -1150,6 +1164,7 @@ export default function MapView({
         className={`tactical-map${drawing ? ' drawing-mode' : ''}${skillActionDraft ? ' skill-action-mode' : ''}`}
         style={{ width: '100%', height: '100%' }}
       >
+        <MapLayerPanes />
         <InteractiveLayerPanGuard />
         <TextEditMapLock active={editing != null} />
         <MapRotationControl initiallyCollapsed={cinematicCompassCollapsed} />

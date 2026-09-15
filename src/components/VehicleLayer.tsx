@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { Marker, Tooltip, useMap } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import * as L from 'leaflet'
 import type { OperatorTeam, Side, VehicleItem } from '../types'
 import { teamOf } from '../config/operators'
@@ -423,10 +424,10 @@ function VehicleMarker({
   return (
     <Marker
       ref={ref}
+      pane={layerPane('unitPane')}
       position={[vehicle.lat, vehicle.lng]}
       icon={icon}
       draggable={canDrag && platform.kind !== 'android'}
-      zIndexOffset={800}
       // 绘制工具激活时禁用交互：载具图标不拦截 mousedown，绘制可穿过
       interactive={interactive}
       eventHandlers={{

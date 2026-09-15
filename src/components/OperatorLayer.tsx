@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Marker, Tooltip, useMap } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import * as L from 'leaflet'
 import type { OperatorUnit, Side } from '../types'
 import { operatorClassOf, teamOf } from '../config/operators'
@@ -294,10 +295,10 @@ function OperatorMarker({
   return (
     <Marker
       ref={ref}
+      pane={layerPane('unitPane')}
       position={[op.lat, op.lng]}
       icon={icon}
       draggable={canDrag}
-      zIndexOffset={820}
       interactive={interactive}
       eventHandlers={{
         mousedown: () => { if (platform.kind !== 'android') map.dragging.disable() },

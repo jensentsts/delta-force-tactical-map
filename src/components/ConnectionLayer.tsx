@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Marker, Polyline } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import * as L from 'leaflet'
 import type { OperatorConnection, OperatorUnit } from '../types'
 
@@ -90,6 +91,7 @@ function ConnectionLine({
     <>
       {/* 无方向点线：只表达两个干员存在协同关系。 */}
       <Polyline
+      pane={layerPane('connectionPane')}
         positions={positions}
         pathOptions={{
           color,
@@ -100,10 +102,12 @@ function ConnectionLine({
           interactive: false,
         }}
       />
-      <Marker position={midpoint} icon={relationIcon} interactive={false} zIndexOffset={610} />
+      <Marker
+      pane={layerPane('connectionPane')} position={midpoint} icon={relationIcon} interactive={false} />
       {/* 热区层：粗透明命中带，仅在关系编辑模式渲染。 */}
       {hotInteractive && (
         <Polyline
+      pane={layerPane('connectionPane')}
           positions={positions}
           pathOptions={{
             color,

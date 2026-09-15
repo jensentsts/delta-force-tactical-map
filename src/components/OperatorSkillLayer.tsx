@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { Circle, Marker, Polygon, Polyline, Tooltip, useMapEvents } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import * as L from 'leaflet'
 import type { OperatorSkillAction, OperatorSkillActionGeometry, OperatorUnit, Side } from '../types'
 import { platform } from '../platform'
@@ -237,9 +238,11 @@ export default function OperatorSkillLayer({ actions, operators, view, onDelete,
       const attachedTooltipOffset: [number, number] = action.sourceKind === 'tactical-item'
         ? [-20, -50]
         : [14 + Math.max(0, attachedIndex) * 18, -50]
-      const marker = (position: [number, number], attached = false, onMove?: (point: [number, number]) => void, onPreview?: (point: [number, number]) => void) => <Fragment key={action.uid}><Marker position={position} icon={iconFor(action, color, attached, highlighted, safeAttachedIndex)} zIndexOffset={highlighted ? 1550 : 1450} draggable={Boolean(onMove)} bubblingMouseEvents={false} eventHandlers={{ mouseover: () => setHoveredUid(action.uid), mouseout: () => setHoveredUid((uid) => uid === action.uid ? null : uid), click: (event) => { L.DomEvent.stop(event.originalEvent); setSelectedUid(action.uid) }, contextmenu: (event) => { L.DomEvent.stop(event.originalEvent); if (platform.kind !== 'android') { setSelectedUid(null); onDelete(action.uid) } }, dragstart: beginCurveDrag, drag: (event) => { if (!onPreview) return; const point = (event.target as L.Marker).getLatLng(); onPreview([point.lat, point.lng]) }, dragend: (event) => { endCurveDrag(); if (!onMove) return; const point = (event.target as L.Marker).getLatLng(); onMove([point.lat, point.lng]) } }}>
+      const marker = (position: [number, number], attached = false, onMove?: (point: [number, number]) => void, onPreview?: (point: [number, number]) => void) => <Fragment key={action.uid}><Marker
+      pane={layerPane('skillActionPane')} position={position} icon={iconFor(action, color, attached, highlighted, safeAttachedIndex)} draggable={Boolean(onMove)} bubblingMouseEvents={false} eventHandlers={{ mouseover: () => setHoveredUid(action.uid), mouseout: () => setHoveredUid((uid) => uid === action.uid ? null : uid), click: (event) => { L.DomEvent.stop(event.originalEvent); setSelectedUid(action.uid) }, contextmenu: (event) => { L.DomEvent.stop(event.originalEvent); if (platform.kind !== 'android') { setSelectedUid(null); onDelete(action.uid) } }, dragstart: beginCurveDrag, drag: (event) => { if (!onPreview) return; const point = (event.target as L.Marker).getLatLng(); onPreview([point.lat, point.lng]) }, dragend: (event) => { endCurveDrag(); if (!onMove) return; const point = (event.target as L.Marker).getLatLng(); onMove([point.lat, point.lng]) } }}>
         {platform.kind !== 'android' && <Tooltip direction="top" offset={attached ? attachedTooltipOffset : [0, -12]}>{action.skillName}{onMove ? ' · 可直接拖动调整位置' : ' · 点击选中，右键删除'}</Tooltip>}
-      </Marker>{selected && platform.kind === 'android' && <Marker position={position} icon={mobileActionsIcon(action, map, position, expandedUid === action.uid, attached ? attachedVisualOffset : [0, 0])} zIndexOffset={1750} interactive bubblingMouseEvents={false} />}</Fragment>
+      </Marker>{selected && platform.kind === 'android' && <Marker
+      pane={layerPane('skillActionPane')} position={position} icon={mobileActionsIcon(action, map, position, expandedUid === action.uid, attached ? attachedVisualOffset : [0, 0])} interactive bubblingMouseEvents={false} />}</Fragment>
       if (!geometry) return source ? marker(source, true) : null
       if (geometry.type === 'area') {
         const skillBounds = map.options.maxBounds ? L.latLngBounds(map.options.maxBounds as L.LatLngBoundsLiteral) : map.getBounds()
@@ -247,16 +250,19 @@ export default function OperatorSkillLayer({ actions, operators, view, onDelete,
         const radius = geometry.radiusRatio
           ? map.distance(geometry.center, [geometry.center[0] + (skillBounds.getNorth() - skillBounds.getSouth()) * geometry.radiusRatio * mapScale, geometry.center[1]])
           : geometry.radius
-        return <Fragment key={action.uid}><Circle center={geometry.center} radius={radius} pathOptions={{ color, weight: 1.5, opacity: .8, fillOpacity: .18 }} interactive={false} />{marker(geometry.center, false, (center) => onUpdateGeometry(action.uid, { ...geometry, center }))}</Fragment>
+        return <Fragment key={action.uid}><Circle
+      pane={layerPane('skillActionPane')} center={geometry.center} radius={radius} pathOptions={{ color, weight: 1.5, opacity: .8, fillOpacity: .18 }} interactive={false} />{marker(geometry.center, false, (center) => onUpdateGeometry(action.uid, { ...geometry, center }))}</Fragment>
       }
       if (geometry.type === 'point') {
         const point = action.targetUid ? positions.get(action.targetUid) ?? geometry.position : geometry.position
-        return <Fragment key={action.uid}>{action.targetUid && source && <Polyline key={`${action.uid}-target`} positions={[source, point]} pathOptions={{ color, weight: 1.5, dashArray: '4 5', opacity: .7 }} interactive={false} />}{marker(point, false, action.targetUid ? undefined : (position) => onUpdateGeometry(action.uid, { ...geometry, position }))}</Fragment>
+        return <Fragment key={action.uid}>{action.targetUid && source && <Polyline
+      pane={layerPane('skillActionPane')} key={`${action.uid}-target`} positions={[source, point]} pathOptions={{ color, weight: 1.5, dashArray: '4 5', opacity: .7 }} interactive={false} />}{marker(point, false, action.targetUid ? undefined : (position) => onUpdateGeometry(action.uid, { ...geometry, position }))}</Fragment>
       }
       if (geometry.type === 'trajectory') {
         const endpoint = geometry.points[geometry.points.length - 1]
         const livePoints = source && geometry.points.length > 1 ? [source, ...geometry.points.slice(1)] : geometry.points
-        return <Fragment key={action.uid}>{(action.placementMode === 'guided-path' || action.sourceKind === 'tactical-item') && <Polyline key={`${action.uid}-line`} positions={livePoints} pathOptions={{ color, weight: 2, dashArray: '8 5' }} interactive={false} />}{marker(endpoint, false, (point) => onUpdateGeometry(action.uid, { ...geometry, points: [...geometry.points.slice(0, -1), point] }))}</Fragment>
+        return <Fragment key={action.uid}>{(action.placementMode === 'guided-path' || action.sourceKind === 'tactical-item') && <Polyline
+      pane={layerPane('skillActionPane')} key={`${action.uid}-line`} positions={livePoints} pathOptions={{ color, weight: 2, dashArray: '8 5' }} interactive={false} />}{marker(endpoint, false, (point) => onUpdateGeometry(action.uid, { ...geometry, points: [...geometry.points.slice(0, -1), point] }))}</Fragment>
       }
       if (geometry.type === 'curve') {
         const start = source ?? geometry.start
@@ -281,6 +287,7 @@ export default function OperatorSkillLayer({ actions, operators, view, onDelete,
         }
         return <Fragment key={action.uid}>
           <Polyline
+      pane={layerPane('skillActionPane')}
             key={`${action.uid}-curve`}
             positions={points}
             bubblingMouseEvents={false}
@@ -297,10 +304,13 @@ export default function OperatorSkillLayer({ actions, operators, view, onDelete,
               },
             }}
           />
-          <Polyline ref={(layer) => { if (layer) curveLineRefs.current.set(action.uid, layer); else curveLineRefs.current.delete(action.uid) }} key={`${action.uid}-curve-visible`} positions={points} pathOptions={{ color, weight: highlighted ? 4 : 2.5, opacity: highlighted ? 1 : .82 }} interactive={false} />
+          <Polyline
+      pane={layerPane('skillActionPane')} ref={(layer) => { if (layer) curveLineRefs.current.set(action.uid, layer); else curveLineRefs.current.delete(action.uid) }} key={`${action.uid}-curve-visible`} positions={points} pathOptions={{ color, weight: highlighted ? 4 : 2.5, opacity: highlighted ? 1 : .82 }} interactive={false} />
           {selected && <>
-            <Polyline ref={(layer) => { if (layer) curveHelperRefs.current.set(action.uid, layer); else curveHelperRefs.current.delete(action.uid) }} key={`${action.uid}-helper`} positions={nodes} pathOptions={{ color, weight: 1, dashArray: '3 5', opacity: .38 }} interactive={false} />
-            {controls.map((control, index) => <Marker key={`${action.uid}-handle-${index}`} position={control} icon={curveHandleIcon(color)} draggable bubblingMouseEvents={false} eventHandlers={{ click: (event) => L.DomEvent.stop(event.originalEvent), contextmenu: (event) => { L.DomEvent.stop(event.originalEvent); const next = controls.filter((_, itemIndex) => itemIndex !== index); onUpdateGeometry(action.uid, { type: 'curve', start, controls: next, end: geometry.end }) }, dragstart: beginCurveDrag, drag: (event) => { const point = (event.target as L.Marker).getLatLng(); const next = [...controls]; next[index] = [point.lat, point.lng]; previewCurve(next) }, dragend: (event) => { endCurveDrag(); const point = (event.target as L.Marker).getLatLng(); const next = [...controls]; next[index] = [point.lat, point.lng]; onUpdateGeometry(action.uid, { type: 'curve', start, controls: next, end: geometry.end }) } }}><Tooltip direction="top">拖动调整曲线 · 右键删除</Tooltip></Marker>)}
+            <Polyline
+      pane={layerPane('skillActionPane')} ref={(layer) => { if (layer) curveHelperRefs.current.set(action.uid, layer); else curveHelperRefs.current.delete(action.uid) }} key={`${action.uid}-helper`} positions={nodes} pathOptions={{ color, weight: 1, dashArray: '3 5', opacity: .38 }} interactive={false} />
+            {controls.map((control, index) => <Marker
+      pane={layerPane('skillActionPane')} key={`${action.uid}-handle-${index}`} position={control} icon={curveHandleIcon(color)} draggable bubblingMouseEvents={false} eventHandlers={{ click: (event) => L.DomEvent.stop(event.originalEvent), contextmenu: (event) => { L.DomEvent.stop(event.originalEvent); const next = controls.filter((_, itemIndex) => itemIndex !== index); onUpdateGeometry(action.uid, { type: 'curve', start, controls: next, end: geometry.end }) }, dragstart: beginCurveDrag, drag: (event) => { const point = (event.target as L.Marker).getLatLng(); const next = [...controls]; next[index] = [point.lat, point.lng]; previewCurve(next) }, dragend: (event) => { endCurveDrag(); const point = (event.target as L.Marker).getLatLng(); const next = [...controls]; next[index] = [point.lat, point.lng]; onUpdateGeometry(action.uid, { type: 'curve', start, controls: next, end: geometry.end }) } }}><Tooltip direction="top">拖动调整曲线 · 右键删除</Tooltip></Marker>)}
           </>}
           {marker(geometry.end, false, (end) => onUpdateGeometry(action.uid, { type: 'curve', start, controls, end }), (end) => previewCurve(controls, end))}
         </Fragment>
@@ -317,7 +327,9 @@ export default function OperatorSkillLayer({ actions, operators, view, onDelete,
         const length = Math.hypot(dx, dy) || 1
         const offset: [number, number] = [(-dx / length) * widthDegrees / 2, (dy / length) * widthDegrees / 2]
         const area: [number, number][] = [[start[0] + offset[0], start[1] + offset[1]], [end[0] + offset[0], end[1] + offset[1]], [end[0] - offset[0], end[1] - offset[1]], [start[0] - offset[0], start[1] - offset[1]]]
-        return <Fragment key={action.uid}><Polygon key={`${action.uid}-cover`} positions={area} pathOptions={{ color, weight: 1, opacity: 0.8, fillOpacity: 0.25 }} interactive={false} /><Polyline key={`${action.uid}-edge`} positions={[start, end]} pathOptions={{ color, weight: 2, dashArray: '7 5', lineCap: 'butt' }} interactive={false} />{marker(end, false, (point) => onUpdateGeometry(action.uid, { ...geometry, points: [...geometry.points.slice(0, -1), point] }))}</Fragment>
+        return <Fragment key={action.uid}><Polygon
+      pane={layerPane('skillActionPane')} key={`${action.uid}-cover`} positions={area} pathOptions={{ color, weight: 1, opacity: 0.8, fillOpacity: 0.25 }} interactive={false} /><Polyline
+      pane={layerPane('skillActionPane')} key={`${action.uid}-edge`} positions={[start, end]} pathOptions={{ color, weight: 2, dashArray: '7 5', lineCap: 'butt' }} interactive={false} />{marker(end, false, (point) => onUpdateGeometry(action.uid, { ...geometry, points: [...geometry.points.slice(0, -1), point] }))}</Fragment>
       }
       return null
     })}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { Marker, Tooltip, useMap } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import * as L from 'leaflet'
 import type { BuildingUnit, OperatorTeam, Side } from '../types'
 import { teamOf } from '../config/operators'
@@ -329,12 +330,12 @@ function BuildingMarker({ building, view, interactive, onMove, onRotate, onToggl
 
   return (
     <Marker
+      pane={layerPane('unitPane')}
       ref={ref}
       position={[building.lat, building.lng]}
       icon={icon}
       draggable={interactive && platform.kind !== 'android'}
       interactive={interactive}
-      zIndexOffset={640}
       eventHandlers={{
         click: (event) => {
           if (platform.kind === 'android') {

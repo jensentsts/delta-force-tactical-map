@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Polygon } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import type { Side, StageConfig } from '../types'
 
 /** 区域颜色统一规则（问题3）：己方=绿、敌方=红、中立=白 */
@@ -70,6 +71,7 @@ export default function ActivityZones({ stages, capturedStageIndex, view, visibl
     <>
       {zone.map((z) => (
         <Polygon
+      pane={layerPane('activityZonePane')}
           key={z.key}
           positions={z.latlngs}
           pathOptions={{

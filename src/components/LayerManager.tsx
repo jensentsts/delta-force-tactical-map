@@ -7,6 +7,7 @@ import type { Feature, FeatureCollection, Point } from 'geojson'
 import type { ActiveTextEdit, ArrowHeadStyle, DashType, DrawSettings, OperatorUnit, Side, TeamMarker, TextStyleProps, ToolMode, VehicleItem } from '../types'
 import { DEFAULT_TEXT_STYLE, ellipsePoints, genUid, textIcon, textStyleFromProps, textStyleToProps } from '../utils/geo'
 import { platform } from '../platform'
+import { ensureMapLayerPanes, layerPane } from '../config/mapLayers'
 import { rangeProgressStyle } from '../utils/rangeStyle'
 import { Checkbox } from './icons'
 
@@ -16,13 +17,13 @@ export const SIDE_COLORS: Record<Side, string> = {
 }
 
 /**
- * 绘制图层专用 Pane（问题1）：
- * z-index 700 > markerPane(600) / tooltipPane(650)，与 popupPane 同级，
- * 确保画笔图形始终显示在瓦片、点位、载具、道具、区域之上。
+ * 绘制图层专用 Pane。
+ * 具体 z-index 不在本文件硬编码，统一由 config/mapLayers 的顺序表决定
+ * （drawPane 位于全部矢量与兵棋之上，drawMarkerPane 不参与旋转以避免双重偏移）。
  */
-const DRAW_PANE = 'drawPane'
+const DRAW_PANE = layerPane('drawPane')
 /** Marker 由 leaflet-rotate 换算屏幕坐标，需留在非旋转 Pane，避免双重偏移。 */
-const DRAW_MARKER_PANE = 'drawMarkerPane'
+const DRAW_MARKER_PANE = layerPane('drawMarkerPane')
 /** Leaflet 会把 pane 名转换成对应的 leaflet-* DOM 类名。 */
 const DRAW_PANE_SELECTOR = '.leaflet-draw-pane, .leaflet-draw-marker-pane'
 const TEXT_EDITOR_SELECTOR = '[contenteditable="true"], .text-marker-editing'
@@ -1388,14 +1389,9 @@ export default function LayerManager({
 
   // Path/SVG 随地图旋转；Marker/编辑手柄由 leaflet-rotate 独立换算位置。
   useEffect(() => {
-    if (!map.getPane(DRAW_PANE)) {
-      const pane = map.createPane(DRAW_PANE, map.getPane('rotatePane') ?? undefined)
-      if (pane) pane.style.zIndex = '700'
-    }
-    if (!map.getPane(DRAW_MARKER_PANE)) {
-      const pane = map.createPane(DRAW_MARKER_PANE, map.getPane('norotatePane') ?? undefined)
-      if (pane) pane.style.zIndex = '710'
-    }
+    // pane 的创建与 z-index 统一由 config/mapLayers 的顺序表决定，
+    // 这里只做兜底（MapLayerPanes 已在 MapContainer 内先执行一次）。
+    ensureMapLayerPanes(map)
     const g = L.featureGroup([], { pane: DRAW_PANE })
     const h = L.featureGroup([], { pane: DRAW_PANE })
     map.addLayer(g)
@@ -4237,7 +4233,7 @@ export default function LayerManager({
     const isText = props.type === 'text'
     const isDefense = props.type === 'defense' && !!props.group
     const isLine = props.type === 'line' || props.type === 'arrow' || props.type === 'pen'
-    const gizmoPane = platform.kind === 'android' ? DRAW_PANE : DRAW_MARKER_PANE
+    const gizmoPane = DRAW_MARKER_PANE
     // 包围盒
     let bounds: L.LatLngBounds
     if (isText && single && first instanceof L.Marker) {

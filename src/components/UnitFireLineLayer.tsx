@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import L from 'leaflet'
 import { Marker, Polyline, useMap } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import type { LatLngExpression } from 'leaflet'
 import type { BuildingUnit, OperatorUnit, Side, TeamMarker, VehicleItem } from '../types'
 import { teamOf } from '../config/operators'
@@ -101,8 +102,10 @@ function UnitFireLineGraphic({ unit, color }: { unit: FireLineUnit; color: strin
   }, [calculateTip, map])
 
   return <>
-    <Marker position={[displayUnit.lat, displayUnit.lng]} icon={arrowIcon} interactive={false} keyboard={false} />
-    <Polyline positions={[tip, pointAt(displayUnit, displayUnit.fireLineLength ?? FIRE_LINE_LENGTH)]} pathOptions={{ color, opacity: .92, weight: 2, dashArray: '7 6', interactive: false, className: 'unit-fire-line-path' }} />
+    <Marker
+      pane={layerPane('fireLinePane')} position={[displayUnit.lat, displayUnit.lng]} icon={arrowIcon} interactive={false} keyboard={false} />
+    <Polyline
+      pane={layerPane('fireLinePane')} positions={[tip, pointAt(displayUnit, displayUnit.fireLineLength ?? FIRE_LINE_LENGTH)]} pathOptions={{ color, opacity: .92, weight: 2, dashArray: '7 6', interactive: false, className: 'unit-fire-line-path' }} />
   </>
 }
 

@@ -1,4 +1,5 @@
 import { Marker, Polygon, useMap } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import * as L from 'leaflet'
 import type { CapturePoint, PointStatus, Side, StageConfig, TacticalObjectiveState } from '../types'
 import { POINT_ICON_BASE } from '../config/points'
@@ -195,6 +196,7 @@ export default function PointMarkers({
       {labelsVisible &&
         activeStage.points.map((point) => (
             <Marker
+      pane={layerPane('capturePointPane')}
               key={`pt-${activeStage.id}-${point.name}`}
               position={[point.lat, point.lng]}
               icon={makeIcon(point, activeStatus, selectedStageId === activeStage.id && selectedName === point.name)}

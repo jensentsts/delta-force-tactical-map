@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Marker, Tooltip, useMap } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import * as L from 'leaflet'
 import type { Side, TeamMarker } from '../types'
 import { teamOf } from '../config/operators'
@@ -240,11 +241,11 @@ function TeamMarkerItem({
 
   return (
     <Marker
+      pane={layerPane('unitPane')}
       ref={ref}
       position={[tm.lat, tm.lng]}
       icon={icon}
       draggable={canDrag}
-      zIndexOffset={800}
       interactive={interactive}
       eventHandlers={{
         click: (e) => {

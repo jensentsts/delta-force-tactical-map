@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { Marker, Tooltip, useMap } from 'react-leaflet'
+import { layerPane } from '../config/mapLayers'
 import * as L from 'leaflet'
 import type { FieldSupportInstance, Side } from '../types'
 import { platform } from '../platform'
@@ -56,7 +57,8 @@ function FieldSupportMarker({ item, view, interactive, mobile, onMove, onDelete 
     target.__fieldSupportDeleteHandlers[item.uid] = () => onDelete(item.uid)
     return () => { if (target.__fieldSupportDeleteHandlers) delete target.__fieldSupportDeleteHandlers[item.uid] }
   }, [item.uid, mobile, onDelete])
-  return <Marker position={[item.lat, item.lng]} icon={icon} draggable={interactive} eventHandlers={{ click: (event) => { if (!mobile) return; L.DomEvent.stop(event.originalEvent); window.dispatchEvent(new CustomEvent('mobile-unit-selected', { detail: item.uid })); setExpanded((value) => !value) }, dragend: (event) => { const point = (event.target as L.Marker).getLatLng(); onMove(item.uid, point.lat, point.lng) }, contextmenu: mobile ? (event) => L.DomEvent.stop(event.originalEvent) : () => onDelete(item.uid) }}>
+  return <Marker
+      pane={layerPane('fieldSupportPane')} position={[item.lat, item.lng]} icon={icon} draggable={interactive} eventHandlers={{ click: (event) => { if (!mobile) return; L.DomEvent.stop(event.originalEvent); window.dispatchEvent(new CustomEvent('mobile-unit-selected', { detail: item.uid })); setExpanded((value) => !value) }, dragend: (event) => { const point = (event.target as L.Marker).getLatLng(); onMove(item.uid, point.lat, point.lng) }, contextmenu: mobile ? (event) => L.DomEvent.stop(event.originalEvent) : () => onDelete(item.uid) }}>
     {!mobile && <Tooltip direction="top" offset={[0, -18]}>{item.name} · {item.side === 'attack' ? '攻方' : '守方'} · 右键删除</Tooltip>}
   </Marker>
 }
