@@ -868,12 +868,21 @@ body {
   padding: 3px 7px;
 }
 
-/* 收缩后不占布局空间：地图区域立即扩大到满宽（需求：工具栏收起后地图加载区域扩大） */
+/* 收缩后不占布局空间：地图区域立即扩大到满宽（需求：工具栏收起后地图加载区域扩大）
+   并彻底停止绘制自身内容。
+
+   这里刻意**不用** overflow: visible。收起后宽度为 0，面板里的表头、滚动容器、
+   分隔条都仍按原宽度布局，overflow: visible 会让它们在 0 宽的盒子外继续绘制，
+   形成"面板已收起但背景/内容仍残留在图上"的现象（载入页面后首次收起时最容易
+   观察到，因为此后任何一次重新布局都会把它抹掉）。改回按边界裁剪，并用
+   contain: paint 把绘制完全关在盒内。展开时由 .left-panel 的 overflow: hidden
+   负责，展开按钮是 position: fixed 的兄弟节点，不受裁剪影响。 */
 .left-panel.collapsed,
 .point-panel.collapsed {
   width: 0;
   flex-shrink: 0;
-  overflow: visible;
+  overflow: hidden;
+  contain: paint;
   border: none;
   background: transparent;
 }
