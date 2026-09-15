@@ -17,10 +17,15 @@ interface ToolbarSelectProps<TMenu extends string> {
   onSelect?: (value: string) => void
   align?: 'left' | 'right'
   floating?: boolean
+  /**
+   * 只显示当前值、不显示前缀标签（如"模式""游戏数据"）。
+   * 标签仍会作为 aria-label 保留，读屏用户不受影响。
+   */
+  hideLabel?: boolean
 }
 
 export default function ToolbarSelect<TMenu extends string>({
-  menu, label, value, options, openMenu, onOpenMenu, onSelect, align = 'left', floating = false,
+  menu, label, value, options, openMenu, onOpenMenu, onSelect, align = 'left', floating = false, hideLabel = false,
 }: ToolbarSelectProps<TMenu>) {
   const open = openMenu === menu
   const menuId = `toolbar-${menu}-menu`
@@ -59,8 +64,8 @@ export default function ToolbarSelect<TMenu extends string>({
 
   return (
     <div className={`map-select topbar-select menu-${menu} ${open ? 'open' : ''}`}>
-      <button ref={buttonRef} className="map-select-btn" onClick={() => onOpenMenu(open ? null : menu)} aria-haspopup="listbox" aria-expanded={open} aria-controls={menuId}>
-        <span className="map-select-label">{label}</span>
+      <button ref={buttonRef} className="map-select-btn" onClick={() => onOpenMenu(open ? null : menu)} aria-haspopup="listbox" aria-expanded={open} aria-controls={menuId} aria-label={hideLabel ? `${label}：${value}` : undefined}>
+        {hideLabel ? null : <span className="map-select-label">{label}</span>}
         <span className="map-select-value">{value}</span>
         <i className="fa-solid fa-chevron-down" aria-hidden="true" />
       </button>

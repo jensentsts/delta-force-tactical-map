@@ -159,6 +159,92 @@ function TextEditMapLock({ active }: { active: boolean }) {
 }
 
 /**
+ * 地图右下角控件组（第 9 项）。
+ *
+ * 顺序从左到右固定为：全屏 / 退出全屏、Zoom in、Zoom out。
+ *
+ * 为什么三者放在**同一个 Leaflet 控件**里：Leaflet 的 bottomright 角是竖向堆叠
+ * 容器，分别注册三个控件会变成上下排列而非横向成组；放同一控件内既能保证顺序，
+ * 也能共用一套边框与分隔线。
+ *
+ * 配色修正：Leaflet 自带 zoom 控件此前沿用浏览器默认的浅色按钮（与暗色军事风格
+ * 冲突），这里统一为与顶栏一致的 --bg-btn 底 + --tx-1 字，hover 强调绿，
+ * 并按缩放级别维护禁用态。
+ */
+function MapCornerControls() {
+  const map = useMap()
+  useEffect(() => {
+    const control = new L.Control({ position: 'bottomright' })
+    control.onAdd = () => {
+      const container = L.DomUtil.create('div', 'leaflet-control leaflet-bar map-corner-controls')
+      L.DomEvent.disableClickPropagation(container)
+      L.DomEvent.disableScrollPropagation(container)
+
+      // 1) 全屏 / 退出全屏（Android 由原生层沉浸式全屏，CSS 会隐藏此按钮）
+      const fullscreenBtn = L.DomUtil.create('button', 'map-corner-btn map-corner-fullscreen', container) as HTMLButtonElement
+      fullscreenBtn.type = 'button'
+      const ENTER_ICON = '<path d="M6 2H2v4M10 2h4v4M6 14H2v-4M10 14h4v-4"/>'
+      const EXIT_ICON = '<path d="M2 6h4V2M14 6h-4V2M2 10h4v4M14 10h-4v4"/>'
+      const renderFullscreenBtn = () => {
+        const active = platform.isFullscreen()
+        fullscreenBtn.innerHTML = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${active ? EXIT_ICON : ENTER_ICON}</svg>`
+        fullscreenBtn.title = active ? '退出全屏' : '全屏'
+        fullscreenBtn.setAttribute('aria-label', active ? '退出全屏' : '全屏')
+        fullscreenBtn.setAttribute('aria-pressed', String(active))
+      }
+      renderFullscreenBtn()
+      L.DomEvent.on(fullscreenBtn, 'click', (event) => {
+        L.DomEvent.stop(event)
+        void platform.toggleFullscreen()
+        // 全屏状态由浏览器异步更新，下一帧再刷新图标
+        window.setTimeout(renderFullscreenBtn, 120)
+      })
+
+      // 2) Zoom in / 3) Zoom out（用 Leaflet 的 zoomIn/zoomOut，与滚轮缩放同一路径）
+      const makeZoomButton = (title: string, zoomIn: boolean) => {
+        const button = L.DomUtil.create('button', 'map-corner-btn', container) as HTMLButtonElement
+        button.type = 'button'
+        const glyph = zoomIn ? '<path d="M8 3.5v9M3.5 8h9"/>' : '<path d="M3.5 8h9"/>'
+        button.innerHTML = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">${glyph}</svg>`
+        button.title = title
+        button.setAttribute('aria-label', title)
+        L.DomEvent.on(button, 'click', (event) => {
+          L.DomEvent.stop(event)
+          if (zoomIn) map.zoomIn()
+          else map.zoomOut()
+        })
+        return button
+      }
+      makeZoomButton('放大', true)
+      makeZoomButton('缩小', false)
+
+      // 缩放级别变化时刷新禁用态，避免在极限级别仍可点击
+      const syncZoomDisabled = () => {
+        const buttons = container.querySelectorAll<HTMLButtonElement>('.map-corner-btn')
+        const zoomInBtn = buttons[1]
+        const zoomOutBtn = buttons[2]
+        if (zoomInBtn) zoomInBtn.disabled = map.getZoom() >= map.getMaxZoom()
+        if (zoomOutBtn) zoomOutBtn.disabled = map.getZoom() <= map.getMinZoom()
+      }
+      map.on('zoomend', syncZoomDisabled)
+      syncZoomDisabled()
+
+      ;(container as HTMLElement & { _cornerCleanup?: () => void })._cornerCleanup = () => {
+        map.off('zoomend', syncZoomDisabled)
+      }
+      return container
+    }
+    control.onRemove = () => {
+      const container = control.getContainer() as (HTMLElement & { _cornerCleanup?: () => void }) | undefined
+      container?._cornerCleanup?.()
+    }
+    control.addTo(map)
+    return () => { control.remove() }
+  }, [map])
+  return null
+}
+
+/**
  * 地图旋转 / 指南针控件（重构版）。
  *
  * 设计要求：
@@ -1205,7 +1291,9 @@ export default function MapView({
         maxZoom={config.maxZoom}
         zoomDelta={mobileLayout ? 0.5 : 1}
         zoomSnap={mobileLayout ? 0.5 : 1}
-        zoomControl={true}
+        // 第 9 项：关闭 Leaflet 内置 zoom 控件（默认 true），
+        // 改由 MapCornerControls 在右下角与全屏按钮一起提供。
+        zoomControl={false}
         touchZoom={true}
         rotate={true}
         bearing={0}
@@ -1217,6 +1305,7 @@ export default function MapView({
         style={{ width: '100%', height: '100%' }}
       >
         <MapLayerPanes />
+        <MapCornerControls />
         <InteractiveLayerPanGuard />
         <TextEditMapLock active={editing != null} />
         <MapRotationControl />

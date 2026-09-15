@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { DrawSettings, Side, ToolMode } from '../types'
 import DrawBar from './DrawBar'
-import { IconFullscreen } from './icons'
 import ShortcutHelp from './ShortcutHelp'
-import { platform } from '../platform'
 import type { GameDataPlatform } from '../config/gameDataPlatform'
 import { MAPS } from '../config/maps'
 import ToolbarSelect, { type ToolbarSelectOption } from './ToolbarSelect'
@@ -51,11 +49,6 @@ interface ToolbarProps {
 
 /** 左上角图标（来自 enn.com.cn，三角洲行动标题标识） */
 const OFFICIAL_LOGO = '/nav_title.png'
-
-/** 全屏切换（复刻官网功能） */
-function toggleFullscreen() {
-  void platform.toggleFullscreen()
-}
 
 /**
  * 顶部工具栏（官网风格）：
@@ -197,12 +190,13 @@ export default function Toolbar({
         onClearAll={onClearAll}
       />
 
-      {/* 右侧模式切换区 */}
+      {/* 右侧模式切换区（第 8 项：去掉"模式""游戏数据"前缀与"视角"字样） */}
       <div className="mode-area">
         <ToolbarSelect
           menu="mode"
           label="模式"
           value={gameModeName}
+          hideLabel
           options={[
             ...selectableModeOptions,
             { value: 'occupation', label: '占领模式', disabled: true },
@@ -220,6 +214,7 @@ export default function Toolbar({
           menu="device"
           label="游戏数据"
           value={gameDataPlatform === 'mobile' ? '移动端' : 'PC端'}
+          hideLabel
           options={DEVICE_OPTIONS}
           openMenu={openMenu}
           onOpenMenu={setOpenMenu}
@@ -227,13 +222,13 @@ export default function Toolbar({
           align="right"
         />
         <div className="mode-divider" />
-        <div className="mode-group seg">
+        <div className="mode-group seg view-switch">
           <button
             className={`mode-btn ${view === 'attack' ? 'active' : ''}`}
             onClick={() => onView('attack')}
             aria-label="攻方视角"
           >
-            <span className="mode-view-long">攻方视角</span>
+            <span className="mode-view-long">攻方</span>
             <span className="mode-view-short" aria-hidden="true">攻</span>
           </button>
           <button
@@ -241,13 +236,10 @@ export default function Toolbar({
             onClick={() => onView('defense')}
             aria-label="守方视角"
           >
-            <span className="mode-view-long">守方视角</span>
+            <span className="mode-view-long">守方</span>
             <span className="mode-view-short" aria-hidden="true">守</span>
           </button>
         </div>
-        <button className="fullscreen-btn" onClick={toggleFullscreen} title="全屏 / 退出全屏">
-          <IconFullscreen size={16} />
-        </button>
         <ShortcutHelp compact />
         <button className="tactical-btn" onClick={onOpenTactical} title="导出战术板 / 保存阶段战术">
           <span className="tactical-label-long">导出</span>

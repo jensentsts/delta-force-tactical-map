@@ -283,7 +283,7 @@
   min-height: 34px;
 }
 
-.mobile-layout .leaflet-control-zoom a {
+.mobile-layout .map-corner-controls .map-corner-btn {
   width: 38px;
   height: 38px;
   line-height: 38px;
@@ -824,7 +824,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 }
 
 /* Android 已由原生层沉浸式全屏；键盘说明和网页全屏按钮在触控端没有意义。 */
-.platform-android .fullscreen-btn,
+.platform-android .map-corner-fullscreen,
 .platform-android .shortcut-help {
   display: none !important;
 }
@@ -2195,8 +2195,8 @@ body:has(.platform-android.mobile-layout) .wg-notes-dock:not(.expanded):not(.col
   min-height: var(--touch-min);
 }
 
-/* 地图缩放控件（Leaflet 自带）。 */
-.mobile-layout .leaflet-control-zoom a {
+/* 右下角控件组（第 9 项）：全屏 / 放大 / 缩小，触控端按 --touch-min 放大。 */
+.mobile-layout .map-corner-controls .map-corner-btn {
   width: var(--touch-min);
   height: var(--touch-min);
   line-height: var(--touch-min);
