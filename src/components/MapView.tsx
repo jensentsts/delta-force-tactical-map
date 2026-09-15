@@ -47,6 +47,7 @@ import ActivityZones from './ActivityZones'
 import MapPropsLayer from './MapPropsLayer'
 import type { LayerVisibility, PropVisibility } from '../types'
 import { platform } from '../platform'
+import { installCanvasKeyboard, type KeyboardUnitKind } from '../utils/canvasKeyboard'
 import VehicleRefreshLayer, { type RuntimeVehicleRefreshPoint, type RuntimeVehicleRefreshRule } from './VehicleRefreshLayer'
 import type { StageDeploy } from '../config/deployVehicles'
 import { rangeProgressStyle } from '../utils/rangeStyle'
@@ -547,6 +548,38 @@ function MapResizeSync() {
   return null
 }
 
+/**
+ * 画布对象的键盘可访问路径（第 10 项）。
+ *
+ * 各图层通过 `data-kb-unit` 把标记声明为可聚焦对象，这里统一处理：
+ *   ←→↑↓    在屏幕上移动 2px（Shift 为 10px）
+ *   Delete  删除当前聚焦对象
+ *   Escape  取消焦点
+ *
+ * 位移用屏幕像素换算而不是直接加减经纬度：本项目用 CRS.Simple 且地图可旋转，
+ * 经纬度轴与屏幕方向不一致，直接加减会导致方向反直觉。绘制工具激活时不接管，
+ * 避免与绘制自身的键盘语义冲突。
+ *
+ * 必须是 MapContainer 的子组件才能通过 useMap() 拿到 map 实例。
+ */
+function CanvasKeyboard({ enabled, positionRefs, onMove, onRemove }: {
+  enabled: boolean
+  positionRefs: Record<string, Record<string, [number, number]>>
+  onMove: (kind: KeyboardUnitKind, uid: string, lat: number, lng: number) => void
+  onRemove: (kind: KeyboardUnitKind, uid: string) => void
+}) {
+  const map = useMap()
+  useEffect(() => {
+    if (!enabled) return
+    return installCanvasKeyboard(map, {
+      positionOf: (kind, uid) => positionRefs[kind]?.[uid],
+      move: onMove,
+      remove: onRemove,
+    })
+  }, [enabled, map, onMove, onRemove, positionRefs])
+  return null
+}
+
 function RouteEditorTrigger({ route, onOpen, onDelete }: { route: TacticalRoute; onOpen: () => void; onDelete: () => void }) {
   const map = useMap()
   const markerRef = useRef<L.Marker | null>(null)
@@ -764,6 +797,8 @@ export default function MapView({
   }, [tool])
   // 载具位置注册表（第十四轮：套索框选/整体移动的实时位置来源，由 VehicleLayer 维护）
   const vehiclePosRef = useRef<Record<string, [number, number]>>({})
+  // 建筑此前没有位置注册表（只有载具/干员/队标有），键盘方向键移动需要当前位置。
+  const buildingPosRef = useRef<Record<string, [number, number]>>({})
 
   // 浮层"共进退"：侧栏展开宽度作为 CSS 变量传给地图浮层（图例/缩放/据点说明）。
   // 窄屏（<=640px）下侧栏压缩为 200px，偏移量同步跟随。
@@ -1002,6 +1037,34 @@ export default function MapView({
   const interactive = tool === 'pan' && !routeDrawing
   // 第十一轮：套索作为绘制工具时，与其他绘制工具一样保持激活（不做其他特殊处理）
 
+  // ---- 画布键盘路径（第 10 项）----
+  // 位置注册表按类型聚合，供键盘方向键读取"当前位置"。
+  const keyboardPositionRefs = useMemo<Record<string, Record<string, [number, number]>>>(
+    () => ({
+      operator: operatorPosRef.current,
+      vehicle: vehiclePosRef.current,
+      building: buildingPosRef.current,
+      team: teamPosRef.current,
+    }),
+    [operatorPosRef, teamPosRef],
+  )
+  const handleKeyboardMove = useCallback((kind: KeyboardUnitKind, uid: string, lat: number, lng: number) => {
+    // 干员/载具/队标走批量接口：它们会 pushEntry 入历史栈，因此键盘移动是可撤销的
+    // （单点拖动路径反而不入栈，这是既有行为，不在本次改动范围内）。
+    if (kind === 'operator') onMoveOperators({ [uid]: [lat, lng] })
+    else if (kind === 'vehicle') onMoveVehicles({ [uid]: [lat, lng] })
+    else if (kind === 'building') onMoveBuilding(uid, lat, lng)
+    else onMoveTeamMarkers({ [uid]: [lat, lng] })
+  }, [onMoveBuilding, onMoveTeamMarkers, onMoveVehicles, onMoveOperators])
+  const handleKeyboardRemove = useCallback((kind: KeyboardUnitKind, uid: string) => {
+    // 载具走单条删除：刷新来源载具需要用户选择"视为损失/复原规则"，
+    // 直接走批量删除会跳过该确认。
+    if (kind === 'operator') onDeleteOperators([uid])
+    else if (kind === 'vehicle') onDeleteVehicle(uid)
+    else if (kind === 'building') onDeleteBuilding(uid)
+    else onDeleteTeamMarkers([uid])
+  }, [onDeleteBuilding, onDeleteOperators, onDeleteTeamMarkers, onDeleteVehicle])
+
   // 选中点位的状态与阶段信息
   const selectedStage = useMemo(() => {
     if (!selectedPoint) return null
@@ -1193,6 +1256,7 @@ export default function MapView({
             buildings={buildings}
             view={view}
             interactive={interactive}
+            posRef={buildingPosRef}
             onMove={onMoveBuilding}
             onRotate={onRotateBuilding}
             onToggleFireLine={onToggleBuildingFireLine}
@@ -1339,6 +1403,12 @@ export default function MapView({
           teamPosRef={teamPosRef}
           onMoveTeams={onMoveTeamMarkers}
           onDeleteTeams={onDeleteTeamMarkers}
+        />
+        <CanvasKeyboard
+          enabled={interactive}
+          positionRefs={keyboardPositionRefs}
+          onMove={handleKeyboardMove}
+          onRemove={handleKeyboardRemove}
         />
       </MapContainer>
       {skillActionDraft && (() => {

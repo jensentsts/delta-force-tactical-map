@@ -60,6 +60,7 @@ import {
 } from './utils/modeConfigStorage'
 import { platform } from './platform'
 import { useDeviceType } from './hooks/useDeviceType'
+import { useOverlayArbiter } from './hooks/useOverlayArbiter'
 import { propsForPlatform, stagesForPlatform, type GameDataPlatform } from './config/gameDataPlatform'
 import { evaluateVehicleRefreshRule } from './utils/vehicleRefreshRuntime'
 import { useBeginnerDemoBridge } from './demo/useBeginnerDemoBridge'
@@ -411,6 +412,27 @@ export default function App() {
   } | null>(null)
   const [refreshVehicleDelete, setRefreshVehicleDelete] = useState<{ vehicles: VehicleItem[]; uids: string[] } | null>(null)
   const [mapRegionRetryKey, setMapRegionRetryKey] = useState(0)
+
+  /**
+   * 模态级浮层互斥：这三类对话框都属于"必须独占"的语义——
+   *   - startupNoticeOpen：首次进入的欢迎/致谢弹窗（z-app，盖住一切）
+   *   - mobileConfirm：移动端确认框（替代 window.confirm，全屏遮罩）
+   *   - refreshVehicleDelete：处理刷新载具的两选一对话框
+   *   - tacticalOpen：战术板弹窗（导出/方案管理）
+   * 同时打开会出现"模态之下还压着一层"的错乱（尤其是 startupNotice 与
+   * mobileConfirm 同时出现时，点击遮罩会作用到被盖住的那一层）。这里按
+   * 声明顺序收敛：最后打开的那个胜出。
+   * cinematic 演示期间不介入，避免打乱录制脚本的时序。
+   */
+  useOverlayArbiter(
+    {
+      startupNotice: { group: 'modal', open: startupNoticeOpen, close: () => setStartupNoticeOpen(false) },
+      mobileConfirm: { group: 'modal', open: mobileConfirm !== null, close: () => setMobileConfirm(null) },
+      refreshVehicleDelete: { group: 'modal', open: refreshVehicleDelete !== null, close: () => setRefreshVehicleDelete(null) },
+      tacticalBoard: { group: 'modal', open: tacticalOpen, close: () => setTacticalOpen(false) },
+    },
+    !isCinematicDemoFrame,
+  )
 
   useEffect(() => {
     if (isCinematicDemoFrame) return

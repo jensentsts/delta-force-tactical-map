@@ -10,6 +10,15 @@ const SHORTCUTS = [
   ['Shift + 单击', '在对象列表中连续多选'],
 ] as const
 
+/** 地图对象的键盘操作（第 10 项）：与列表快捷键分开列出，避免混淆作用对象。 */
+const CANVAS_SHORTCUTS = [
+  ['Tab / Shift+Tab', '在地图上的兵棋对象之间移动焦点'],
+  ['← ↑ → ↓', '移动当前聚焦的地图对象（2 像素）'],
+  ['Shift + 方向键', '快速移动当前对象（10 像素）'],
+  ['Delete', '删除当前聚焦的地图对象'],
+  ['Escape', '退出对象焦点，回到地图'],
+] as const
+
 export default function ShortcutHelp({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false)
 
@@ -33,7 +42,11 @@ export default function ShortcutHelp({ compact = false }: { compact?: boolean })
           <dl>
             {SHORTCUTS.map(([keys, label]) => <div key={keys}><dt>{keys}</dt><dd>{label}</dd></div>)}
           </dl>
-          <small>输入框聚焦时保留系统文字编辑行为。</small>
+          <p className="shortcut-help-section">地图对象（键盘）</p>
+          <dl>
+            {CANVAS_SHORTCUTS.map(([keys, label]) => <div key={keys}><dt>{keys}</dt><dd>{label}</dd></div>)}
+          </dl>
+          <small>输入框聚焦时保留系统文字编辑行为。地图对象需先用 Tab 聚焦。</small>
         </div>
       ) : null}
     </div>
