@@ -7398,19 +7398,28 @@ input[type='range']:focus-visible {
   flex-shrink: 0;
 }
 
-.zone-legend-item .swatch.own {
-  background: var(--green);
-  border: 1px solid var(--green);
+/* 图例色块（第 7 项）：绿=本方/守方、红=敌方/攻方、白=交战区域。
+   注意 --red / --blue 在本项目中承载的是"守方红 / 攻方蓝"的既有语义，
+   而地图上的区域颜色是**视角相对**的（本方永远绿、敌方永远红），
+   因此这里直接写颜色语义，不引用那两个历史命名令牌。 */
+
+/* 本方 / 守方区域 = 绿 */
+.zone-legend-item .swatch.defense {
+  background: #01ff84;
+  border: 1px solid #01ff84;
 }
 
-.zone-legend-item .swatch.neutral {
-  background: var(--gold-accent);
-  border: 1px solid var(--gold-accent);
+/* 敌方 / 攻方区域 = 红 */
+.zone-legend-item .swatch.attack {
+  background: #e0453a;
+  border: 1px solid #e0453a;
 }
 
-.zone-legend-item .swatch.deny {
-  background: var(--red);
-  border: 1px solid var(--red);
+/* 交战区域 = 白色实线（用"浅色细线 + 深色描边"表达线而非色块，与地图一致） */
+.zone-legend-item .swatch.contested {
+  background: transparent;
+  border: 2px solid #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .55);
 }
 
 /* ================= 战术板弹窗（第二十一轮：导出 HTML + 方案管理） ================= */

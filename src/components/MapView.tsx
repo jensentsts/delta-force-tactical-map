@@ -1562,7 +1562,7 @@ export default function MapView({
         />
       )}
 
-      {/* 区域图例（问题3 三色规则：仅当前争夺阶段显示） */}
+      {/* 区域图例（第 7 项：绿=守方、红=攻方、白=交战区域；仅当前争夺阶段显示） */}
       {runtimeStageIndex < runtimeStages.length && (
         <div className={`zone-legend${legendOpen ? '' : ' collapsed'}`}>
           {legendOpen ? (
@@ -1574,16 +1574,16 @@ export default function MapView({
                 </button>
               </div>
               <div className="zone-legend-item">
-                <span className="swatch own" />
-                己方区域（绿）
+                <span className="swatch defense" />
+                本方 / 守方区域（绿）
               </div>
               <div className="zone-legend-item">
-                <span className="swatch neutral" />
-                中立 / 待争夺（金）
+                <span className="swatch attack" />
+                敌方 / 攻方区域（红）
               </div>
               <div className="zone-legend-item">
-                <span className="swatch deny" />
-                敌方区域（红）
+                <span className="swatch contested" />
+                交战区域（白色实线）
               </div>
             </>
           ) : (
