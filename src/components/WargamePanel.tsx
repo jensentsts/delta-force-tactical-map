@@ -14,6 +14,18 @@ import MarkdownWysiwygEditor from './MarkdownWysiwygEditor'
 
 const escapeDocumentHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] ?? char))
 
+/**
+ * 推演备注浮层总开关。
+ *
+ * false = 隐藏（当前需求）：浮层不渲染，入口不可达，但备注的数据结构与导出链路
+ *         完整保留，用户已写过的备注不会丢失。
+ * true  = 恢复显示。
+ *
+ * 用常量而不是删除代码的原因见渲染处的注释：notes 逻辑仍被战术板导出、
+ * 阶段×回合快照、原生数据包与录屏演示共用。
+ */
+const SHOW_WARGAME_NOTES_DOCK = false
+
 interface WargamePanelProps {
   mapId: string
   view: Side
@@ -563,7 +575,17 @@ export default function WargamePanel({
         <i className="fa-solid fa-bullseye" aria-hidden="true" /><span><b>阵地支援</b><small>部署范围支援技能</small></span><em>{fieldSupports.length}</em>
       </button>
 
-      {createPortal(
+      {/* 推演备注浮层（原 .wg-notes-dock，固定在地图右下角）已按要求隐藏。
+
+          这里用编译期常量做条件而不是直接删除 JSX：notes 的编辑/导出/图片插入逻辑
+          仍有约 100 行，且 wargame.stageNotes / noteImages 的数据结构还被
+          · 战术板 HTML 导出（exportTactical 的 board-notes 区块）
+          · 阶段×回合快照与原生数据包
+          · 录屏演示的备注写入与校验（beginnerDemoAdapter / Expectations）
+          共同使用，直接删代码会连带破坏这些功能与演示脚本。
+          常量置为 false 后该 JSX 在运行期永不渲染（浮层消失、功能入口不可达），
+          同时保留恢复能力：改为 true 即重新显示。 */}
+      {SHOW_WARGAME_NOTES_DOCK && createPortal(
         <section className={`wg-notes-dock ${notesCollapsed ? 'collapsed' : ''} ${notesExpanded ? 'expanded' : ''}`} aria-label="阶段备注">
           <header>
             <span><i className="fa-regular fa-note-sticky" aria-hidden="true" />推演备注</span>
