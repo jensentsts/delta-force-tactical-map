@@ -120,41 +120,6 @@ body {
   height: 100vh;
 }
 
-/* 影视化 Demo 的纯地图取景：只由 URL 参数启用，不影响正常应用。 */
-.app.cinematic-map-only .toolbar,
-.app.cinematic-map-only .left-panel,
-.app.cinematic-map-only .point-panel,
-.app.cinematic-map-only .collapse-float,
-.app.cinematic-map-only .zone-legend,
-.app.cinematic-map-only .deploy-bar {
-  display: none !important;
-}
-
-.app.cinematic-map-only .leaflet-control-zoom {
-  display: none !important;
-}
-
-.app.cinematic-map-only .main {
-  height: 100vh;
-}
-
-.app.cinematic-compass-demo .map-rotation-control {
-  position:fixed !important;
-  z-index: var(--z-demo) !important;
-  left:50% !important;
-  right:auto !important;
-  top:50% !important;
-  bottom:auto !important;
-  margin:0 !important;
-  transform:translate(-50%,-50%) scale(1.35);
-  transform-origin:center;
-  box-shadow:0 0 0 8px rgba(1,255,132,.055),0 24px 70px rgba(0,0,0,.68);
-  animation:cinematic-compass-control-in .5s cubic-bezier(.18,.82,.28,1) both;
-}
-@keyframes cinematic-compass-control-in {
-  from { opacity:0; transform:translate(-50%,-50%) scale(1.12); filter:blur(4px); }
-  to { opacity:1; transform:translate(-50%,-50%) scale(1.35); filter:none; }
-}
 
 /* 0.1.0 Demo：真实左侧“对局状态”区域的聚焦样式，仅由专用 URL 参数启用。 */
 .app.cinematic-refresh-sidebar .toolbar,
@@ -381,11 +346,15 @@ body {
   font-size: var(--fs-2xs);
 }
 
+/* ==========================================================================
+   地图旋转控件（指南针）
+   --------------------------------------------------------------------------
+   重构后只有表盘本体：无悬浮层、无收起按钮、无步进按钮、无独立输入框。
+   方向按钮（N/E/S/W）默认隐藏，hover 对应方向时浮现；中心是角度读数，
+   点击后变为可编辑数字。
+   ========================================================================== */
 .map-rotation-control {
-  display: grid;
-  grid-template-columns: 34px 84px 34px 30px;
-  align-items: center;
-  gap: 5px;
+  display: block;
   overflow: visible;
   border: 0 !important;
   background: transparent;
@@ -398,126 +367,43 @@ body {
   transition: none !important;
 }
 
-.map-rotation-control button {
-  width: auto;
-  height: 40px;
-  padding: 0;
-  border: 1px solid var(--line-1);
-  border-radius: 3px;
-  background: rgba(9, 14, 17, .94);
-  color: var(--tx-2);
-  font: 700 15px/40px sans-serif;
-  cursor: pointer;
-}
-
-.map-rotation-control button:last-child { border-right: 1px solid var(--line-1); }
-@media (hover: hover) {
-.map-rotation-control button:hover { background: var(--bg-hover); color: var(--green); }
-}
-
-.map-rotation-control .map-bearing-compass {
+.map-bearing-compass {
   position: relative;
   display: grid;
-  width: 78px;
-  height: 78px;
-  justify-self: center;
+  width: 76px;
+  height: 76px;
   place-items: center;
-  overflow: visible;
   box-sizing: border-box;
-  border: 0;
   border-radius: 50%;
   touch-action: none;
-  cursor: crosshair;
-  background: transparent;
-  outline: 0;
-  box-shadow: none;
+  cursor: grab;
+  background: radial-gradient(circle, rgba(1, 255, 132, .1), transparent 64%), linear-gradient(180deg, #131c20, #080d10);
+  outline: 1px solid rgba(0, 0, 0, .9);
+  box-shadow: 0 0 7px rgba(1, 255, 132, .12);
   isolation: isolate;
 }
 
-.map-rotation-control .map-bearing-compass::before,
-.map-rotation-control .map-bearing-compass::after {
+.map-bearing-compass:active { cursor: grabbing; }
+
+/* 双层实物圆环：避免深色地图上右缘被阴影吞没。 */
+.map-bearing-compass::before,
+.map-bearing-compass::after {
   content: '';
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
 }
 
-/* 使用真实边框绘制两层完整圆环，避免深色地图上右缘被阴影吞没。 */
-.map-rotation-control .map-bearing-compass::before {
+.map-bearing-compass::before {
   z-index: var(--z-build);
   inset: 3px;
   border: 1px solid rgba(108, 137, 145, .72);
 }
 
-.map-rotation-control .map-bearing-compass::after {
+.map-bearing-compass::after {
   z-index: var(--z-build);
   inset: 6px;
   border: 1px solid rgba(1, 255, 132, .2);
-}
-@media (hover: hover) {
-.map-rotation-control .map-bearing-compass:hover {
-  background: radial-gradient(circle, rgba(1, 255, 132, .11), transparent 68%);
-}
-}
-
-.map-bearing-column {
-  position: relative;
-  display: grid;
-  grid-template-rows: 24px 78px 30px;
-  gap: 4px;
-  justify-items: center;
-  overflow: visible;
-  border-right: 0;
-}
-
-/* 圆形底衬独立于 button 盒模型，避免右侧被相邻控件的矩形区域裁掉。 */
-.map-bearing-column::before {
-  content: '';
-  position: absolute;
-  z-index: var(--z-build);
-  top: 29px;
-  left: 2px;
-  box-sizing: border-box;
-  width: 78px;
-  height: 78px;
-  border: 1px solid #63767d;
-  border-radius: 50%;
-  outline: 1px solid rgba(0, 0, 0, .9);
-  outline-offset: 1px;
-  background: radial-gradient(circle, rgba(1, 255, 132, .09), transparent 62%), linear-gradient(180deg, #131c20, #080d10);
-  box-shadow: 0 0 7px rgba(1, 255, 132, .11);
-  pointer-events: none;
-}
-
-.map-bearing-column > * {
-  position: relative;
-  z-index: var(--z-build);
-}
-
-.map-rotation-control .map-bearing-column button,
-.map-rotation-control .map-bearing-column label { border-right: 1px solid var(--line-1); }
-
-.map-rotation-control .map-bearing-reset {
-  width: 32px;
-  height: 22px;
-  border: 1px solid var(--line-1);
-  border-radius: 3px;
-  color: var(--green);
-  font: 800 9px/20px sans-serif;
-}
-
-.map-rotation-control .map-rotation-step,
-.map-rotation-control .map-rotation-collapse {
-  display: grid;
-  place-items: center;
-  line-height: 1;
-}
-
-.map-rotation-control .map-rotation-step {
-  width: 30px;
-  height: 30px;
-  border-radius: 3px;
-  font-size: var(--fs-md);
 }
 
 .map-bearing-dial {
@@ -528,20 +414,67 @@ body {
   border-radius: 50%;
   background: radial-gradient(circle, transparent 0 54%, rgba(1, 255, 132, .12) 55% 58%, transparent 59%), repeating-conic-gradient(from -1deg, rgba(188, 204, 209, .8) 0 1deg, transparent 1deg 15deg);
   box-shadow: 0 0 0 2px rgba(0, 0, 0, .5), inset 0 0 8px rgba(0, 0, 0, .75), 0 0 7px rgba(1, 255, 132, .12);
+  /* 表盘随地图角度旋转；transform 由 JS 内联给出 */
+  transition: none;
   pointer-events: none;
 }
 
-.map-bearing-dial > span {
+/* 四个方向槽位：定位在表盘四端，槽位本身不接收事件，只有 hover 时浮现的按钮接收 */
+.bearing-slot {
   position: absolute;
-  z-index: var(--z-build);
-  color: #819096;
-  font: 700 14px/1 Consolas, monospace;
+  z-index: var(--z-sticky);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
 }
 
-.map-bearing-dial .north { top: 3px; left: 50%; color: var(--green); transform: translateX(-50%); }
-.map-bearing-dial .east { top: 50%; right: 3px; transform: translateY(-50%); }
-.map-bearing-dial .south { bottom: 3px; left: 50%; transform: translateX(-50%); }
-.map-bearing-dial .west { top: 50%; left: 3px; transform: translateY(-50%); }
+.bearing-slot.north { top: -9px; left: 50%; translate: -50% 0; }
+.bearing-slot.east { top: 50%; right: -9px; translate: 0 -50%; }
+.bearing-slot.south { bottom: -9px; left: 50%; translate: -50% 0; }
+.bearing-slot.west { top: 50%; left: -9px; translate: 0 -50%; }
+
+/* 方向按钮：默认只有字母，hover 到该方向时浮现为可点按钮 */
+.bearing-direction {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: #819096;
+  font: 700 13px/1 Consolas, monospace;
+  cursor: pointer;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .14s ease, background .14s ease, border-color .14s ease, color .14s ease;
+}
+
+.bearing-slot.north .bearing-direction { color: var(--green); }
+
+/* 浮现条件：hover/focus 到表盘上对应的方向槽位 */
+.map-bearing-compass.hover-north .bearing-slot.north .bearing-direction,
+.map-bearing-compass.hover-east .bearing-slot.east .bearing-direction,
+.map-bearing-compass.hover-south .bearing-slot.south .bearing-direction,
+.map-bearing-compass.hover-west .bearing-slot.west .bearing-direction,
+.bearing-direction:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  border-color: var(--line-2);
+  background: rgba(9, 14, 17, .96);
+}
+
+@media (hover: hover) {
+  .map-bearing-compass.hover-north .bearing-slot.north .bearing-direction:hover,
+  .map-bearing-compass.hover-east .bearing-slot.east .bearing-direction:hover,
+  .map-bearing-compass.hover-south .bearing-slot.south .bearing-direction:hover,
+  .map-bearing-compass.hover-west .bearing-slot.west .bearing-direction:hover {
+    border-color: var(--green);
+    color: var(--green);
+    background: var(--bg-hover);
+  }
+}
 
 .map-bearing-needle {
   position: relative;
@@ -575,75 +508,58 @@ body {
   filter: drop-shadow(0 0 1px rgba(217, 87, 77, .7));
 }
 
+/* 中心：角度读数 / 可编辑输入。点击后进入编辑态。 */
 .map-bearing-pivot {
   position: absolute;
-  z-index: var(--z-build);
-  width: 7px;
-  height: 7px;
+  z-index: var(--z-overlay);
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   border: 1px solid #d8e2e5;
   border-radius: 50%;
   background: #10181b;
-  box-shadow: 0 0 3px rgba(1, 255, 132, .7);
-  pointer-events: none;
+  color: var(--tx-0);
+  font: 700 10px/1 Consolas, monospace;
+  cursor: text;
+  box-shadow: 0 0 4px rgba(1, 255, 132, .55);
+  transition: border-color .14s ease, box-shadow .14s ease;
 }
 
-.map-bearing-input {
-  display: flex;
-  align-items: center;
-  height: 28px;
-  padding: 0 4px;
-  border: 1px solid var(--line-1);
-  border-radius: 3px;
-  background: rgba(9, 14, 17, .94);
-  color: var(--gold);
+.map-bearing-pivot > b { pointer-events: none; }
+
+@media (hover: hover) {
+  .map-bearing-pivot:hover {
+    border-color: var(--green);
+    box-shadow: 0 0 7px rgba(1, 255, 132, .85);
+  }
 }
 
-.map-bearing-input input {
-  box-sizing: border-box;
-  width: 44px;
-  padding: 2px;
-  border: 1px solid var(--line-2);
-  border-radius: 2px;
+.map-bearing-pivot.editing {
+  border-color: var(--green);
+  box-shadow: 0 0 8px rgba(1, 255, 132, .9);
+}
+
+.map-bearing-pivot input {
+  width: 30px;
+  padding: 0;
+  border: 0;
   outline: none;
-  background: #080d10;
-  color: var(--gold);
-  font: 700 10px/1.2 Consolas, monospace;
-  text-align: right;
-  /* 隐藏 number 输入框自带的步进箭头（遮挡数字，步进已由 ↶/↷ 按钮提供） */
+  background: transparent;
+  color: var(--green);
+  font: 700 10px/1 Consolas, monospace;
+  text-align: center;
   appearance: textfield;
   -moz-appearance: textfield;
 }
 
-.map-bearing-input input::-webkit-outer-spin-button,
-.map-bearing-input input::-webkit-inner-spin-button {
+.map-bearing-pivot input::-webkit-outer-spin-button,
+.map-bearing-pivot input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   appearance: none;
   margin: 0;
-}
-
-
-.map-bearing-input input:focus { border-color: var(--green); }
-.map-bearing-input span { margin-left: 2px; font-size: var(--fs-2xs); }
-
-.map-rotation-control .map-rotation-collapse {
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--line-1);
-  border-radius: 3px;
-  color: var(--tx-4);
-  font-size: var(--fs-xs);
-}
-
-.map-rotation-control.collapsed {
-  display: block;
-  width: 30px;
-  height: 30px;
-}
-
-.map-rotation-control.collapsed > :not(.map-rotation-collapse) { display: none; }
-.map-rotation-control.collapsed .map-rotation-collapse {
-  width: 30px;
-  height: 30px;
 }
 
 /* 左上角 Logo 区与可调节左侧栏保持对齐。 */

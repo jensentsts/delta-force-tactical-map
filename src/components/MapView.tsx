@@ -158,173 +158,227 @@ function TextEditMapLock({ active }: { active: boolean }) {
   return null
 }
 
-function MapRotationControl({ initiallyCollapsed = false }: { initiallyCollapsed?: boolean }) {
+/**
+ * 地图旋转 / 指南针控件（重构版）。
+ *
+ * 设计要求：
+ * - 位于地图区域的真正左上角（随左侧面板开合贴在面板右侧，即"地图的左上角"）；
+ * - 不再有悬浮层、不再有收起/展开按钮、不再有 ↶/↷ 步进按钮与独立数字输入框；
+ * - hover 到表盘上的 N/E/S/W 时浮现对应方向的按钮，点击即旋转到该方向；
+ * - 点击表盘正中心时，中心显示当前角度并切换为可编辑数字，回车确定、失焦确定、
+ *   Esc 取消；编辑期间表盘仍可拖动，两者双向同步；
+ * - 指针仍可按住拖动无级旋转。
+ */
+function MapRotationControl() {
   const map = useMap()
-  useEffect(() => {
-    const control = new L.Control({ position: 'topleft' })
-    control.onAdd = () => {
-      const startsCollapsed = platform.kind === 'android' || initiallyCollapsed
-      const container = L.DomUtil.create('div', `leaflet-control leaflet-bar map-rotation-control${startsCollapsed ? ' collapsed' : ''}`)
-      L.DomEvent.disableClickPropagation(container)
-      L.DomEvent.disableScrollPropagation(container)
-      const makeButton = (label: string, title: string, onClick: () => void, parent: HTMLElement = container) => {
-        const button = L.DomUtil.create('button', '', parent) as HTMLButtonElement
-        button.type = 'button'
-        button.textContent = label
-        button.title = title
-        L.DomEvent.disableClickPropagation(button)
-        L.DomEvent.on(button, 'click', (event) => {
-          L.DomEvent.stop(event)
-          onClick()
-        })
-        return button
-      }
-      // 平滑旋转动画：步进按钮/正北复位走 rAF 缓动插值（最短路径），拖动与输入保持即时
-      let rotateAnimId = 0
-      let rotateAnimRaf = 0
-      let requestedBearing = map.getBearing()
-      const nearestBearingDelta = (delta: number) => ((delta % 360) + 540) % 360 - 180
-      const cancelBearingAnimation = (syncRequestedBearing = true) => {
-        rotateAnimId += 1
-        window.cancelAnimationFrame(rotateAnimRaf)
-        rotateAnimRaf = 0
+  const dialRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const [bearing, setBearing] = useState(() => map.getBearing?.() ?? 0)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  /** 当前 hover 的表盘方向；决定哪个方向按钮浮现。 */
+  const [hoverDir, setHoverDir] = useState('')
+
+  /**
+   * 由指针相对表盘中心的角度判断当前悬停的方向（90° 扇区）。
+   * 用 `atan2(x, -y)` 与拖动旋转同一套换算，保证"靠近哪个字母就浮现哪个"。
+   */
+  const directionFromPointer = (event: React.PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const x = event.clientX - (rect.left + rect.width / 2)
+    const y = event.clientY - (rect.top + rect.height / 2)
+    // 中心读数区域不判方向，交给中心按钮自己处理
+    if (Math.hypot(x, y) < rect.width * 0.18) return ''
+    const angle = ((Math.atan2(x, -y) * 180 / Math.PI) + 360) % 360
+    if (angle >= 315 || angle < 45) return 'north'
+    if (angle < 135) return 'east'
+    if (angle < 225) return 'south'
+    return 'west'
+  }
+
+  /** 归一化到 [0, 360) */
+  const normalize = (value: number) => ((value % 360) + 360) % 360
+
+  // 平滑旋转：方向按钮点击时按最短路径做 rAF 缓动。
+  const animRef = useRef({ id: 0, raf: 0 })
+  const cancelAnimation = useCallback(() => {
+    animRef.current.id += 1
+    window.cancelAnimationFrame(animRef.current.raf)
+    animRef.current.raf = 0
+    map.getContainer().classList.remove('map-bearing-animating')
+  }, [map])
+  const animateTo = useCallback((target: number) => {
+    cancelAnimation()
+    const animId = animRef.current.id
+    const from = map.getBearing?.() ?? 0
+    // 最短路径插值：避免从 350° 转到 0° 时反着绕一整圈
+    const delta = ((target - from) % 360 + 540) % 360 - 180
+    if (Math.abs(delta) < 0.01) return
+    map.getContainer().classList.add('map-bearing-animating')
+    const start = performance.now()
+    const duration = 320
+    const tick = (now: number) => {
+      if (animId !== animRef.current.id) return
+      const progress = Math.min(1, (now - start) / duration)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      map.setBearing(from + delta * eased)
+      if (progress < 1) animRef.current.raf = window.requestAnimationFrame(tick)
+      else {
+        animRef.current.raf = 0
         map.getContainer().classList.remove('map-bearing-animating')
-        if (syncRequestedBearing) requestedBearing = map.getBearing()
       }
-      const animateBearing = (target: number, duration = 320, shortestPath = true) => {
-        cancelBearingAnimation(false)
-        const animId = rotateAnimId
-        const from = map.getBearing()
-        const delta = shortestPath
-          ? nearestBearingDelta(target - from)
-          : target - from
-        requestedBearing = from + delta
-        if (Math.abs(delta) < 0.01) return
-        map.getContainer().classList.add('map-bearing-animating')
-        const start = performance.now()
-        const tick = (now: number) => {
-          if (animId !== rotateAnimId) return
-          const progress = Math.min(1, (now - start) / duration)
-          const eased = 1 - Math.pow(1 - progress, 3)
-          map.setBearing(from + delta * eased)
-          if (progress < 1) rotateAnimRaf = window.requestAnimationFrame(tick)
-          else {
-            rotateAnimRaf = 0
-            map.getContainer().classList.remove('map-bearing-animating')
-          }
-        }
-        rotateAnimRaf = window.requestAnimationFrame(tick)
-      }
-      const stepBearing = (step: number) => {
-        const current = map.getBearing()
-        const pendingDelta = rotateAnimRaf ? nearestBearingDelta(requestedBearing - current) : 0
-        animateBearing(current + pendingDelta + step, 320, false)
-      }
-      const rotateLeft = makeButton('↶', '地图逆时针旋转 15°', () => stepBearing(-15))
-      rotateLeft.className = 'map-rotation-step'
-      const compassColumn = L.DomUtil.create('div', 'map-bearing-column', container)
-      const reset = makeButton('N', '恢复正北朝上', () => animateBearing(0), compassColumn)
-      reset.className = 'map-bearing-reset'
-      const compass = L.DomUtil.create('button', 'map-bearing-compass', compassColumn) as HTMLButtonElement
-      compass.type = 'button'
-      compass.title = '按住并拖动指南针，无级调整地图角度'
-      compass.innerHTML = '<i class="map-bearing-dial"><span class="north">N</span><span class="east">E</span><span class="south">S</span><span class="west">W</span></i><span class="map-bearing-needle"><b></b><em></em></span><span class="map-bearing-pivot"></span>'
-
-      const inputWrap = L.DomUtil.create('label', 'map-bearing-input', compassColumn)
-      inputWrap.title = '直接输入地图旋转角度（0–359.9）'
-      const input = L.DomUtil.create('input', '', inputWrap) as HTMLInputElement
-      input.type = 'number'
-      input.min = '0'
-      input.max = '359.9'
-      input.step = '0.1'
-      input.setAttribute('aria-label', '地图旋转角度')
-      const degree = L.DomUtil.create('span', '', inputWrap)
-      degree.textContent = '°'
-      const rotateRight = makeButton('↷', '地图顺时针旋转 15°', () => stepBearing(15))
-      rotateRight.className = 'map-rotation-step'
-      const collapse = makeButton('', '收起地图旋转控件', () => {
-        const collapsed = container.classList.toggle('collapsed')
-        collapse.innerHTML = collapsed
-          ? '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-          : '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="m10 3-5 5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-        collapse.title = collapsed ? '展开地图旋转控件' : '收起地图旋转控件'
-      })
-      collapse.className = 'map-rotation-collapse'
-      collapse.innerHTML = startsCollapsed
-        ? '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-        : '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="m10 3-5 5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-      collapse.title = startsCollapsed ? '展开地图旋转控件' : '收起地图旋转控件'
-
-      let dragging = false
-      const setBearingFromPointer = (event: PointerEvent) => {
-        const rect = compass.getBoundingClientRect()
-        const x = event.clientX - (rect.left + rect.width / 2)
-        const y = event.clientY - (rect.top + rect.height / 2)
-        map.setBearing(Math.atan2(x, -y) * 180 / Math.PI)
-      }
-      const onPointerMove = (event: PointerEvent) => {
-        if (!dragging) return
-        event.preventDefault()
-        setBearingFromPointer(event)
-      }
-      const finishPointer = () => {
-        dragging = false
-        document.removeEventListener('pointermove', onPointerMove)
-        document.removeEventListener('pointerup', finishPointer)
-        document.removeEventListener('pointercancel', finishPointer)
-      }
-      compass.addEventListener('pointerdown', (event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        cancelBearingAnimation()
-        dragging = true
-        setBearingFromPointer(event)
-        document.addEventListener('pointermove', onPointerMove, { passive: false })
-        document.addEventListener('pointerup', finishPointer)
-        document.addEventListener('pointercancel', finishPointer)
-      })
-      input.addEventListener('input', () => {
-        cancelBearingAnimation()
-        const value = Number(input.value)
-        if (Number.isFinite(value)) map.setBearing(value)
-        fitInputWidth()
-      })
-      input.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') input.blur()
-      })
-
-      // 度数输入框按内容自动伸缩（等宽字体按 ch 计），最大 6ch 防止过度撑开
-      function fitInputWidth() {
-        input.style.width = `${Math.min(Math.max(input.value.length + 1, 4), 6)}ch`
-      }
-
-      const onRotate = () => {
-        const bearing = ((map.getBearing() % 360) + 360) % 360
-        if (document.activeElement !== input) input.value = bearing.toFixed(1).replace(/\.0$/, '')
-        fitInputWidth()
-        const needle = compass.querySelector<HTMLElement>('.map-bearing-needle')
-        if (needle) needle.style.transform = `rotate(${bearing}deg)`
-        compass.setAttribute('aria-label', `地图当前旋转 ${bearing.toFixed(1)} 度`)
-      }
-      map.on('rotate', onRotate)
-      ;(container as HTMLElement & { _rotationCleanup?: () => void })._rotationCleanup = () => {
-        cancelBearingAnimation()
-        finishPointer()
-        map.off('rotate', onRotate)
-      }
-      onRotate()
-      return container
     }
-    control.onRemove = () => {
-      const container = control.getContainer() as (HTMLElement & { _rotationCleanup?: () => void }) | undefined
-      container?._rotationCleanup?.()
+    animRef.current.raf = window.requestAnimationFrame(tick)
+  }, [cancelAnimation, map])
+
+  // 地图旋转 → 同步表盘（编辑中不覆盖用户正在输入的内容）
+  useEffect(() => {
+    const update = () => setBearing(normalize(map.getBearing?.() ?? 0))
+    map.on('rotate', update)
+    update()
+    return () => { map.off('rotate', update) }
+  }, [map])
+
+  // 按住表盘拖动：无级旋转
+  useEffect(() => {
+    const dial = dialRef.current
+    if (!dial) return
+    let dragging = false
+    const setFromPointer = (event: PointerEvent) => {
+      const rect = dial.getBoundingClientRect()
+      const x = event.clientX - (rect.left + rect.width / 2)
+      const y = event.clientY - (rect.top + rect.height / 2)
+      map.setBearing(Math.atan2(x, -y) * 180 / Math.PI)
     }
-    control.addTo(map)
+    const onMove = (event: PointerEvent) => {
+      if (!dragging) return
+      event.preventDefault()
+      setFromPointer(event)
+    }
+    const finish = () => {
+      dragging = false
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', finish)
+      document.removeEventListener('pointercancel', finish)
+    }
+    const onDown = (event: PointerEvent) => {
+      // 中心读数按钮与四个方向按钮自行处理点击，不进入拖动
+      if ((event.target as HTMLElement).closest('.map-bearing-pivot, .bearing-direction')) return
+      event.preventDefault()
+      event.stopPropagation()
+      cancelAnimation()
+      dragging = true
+      setFromPointer(event)
+      document.addEventListener('pointermove', onMove, { passive: false })
+      document.addEventListener('pointerup', finish)
+      document.addEventListener('pointercancel', finish)
+    }
+    dial.addEventListener('pointerdown', onDown)
     return () => {
-      control.remove()
+      dial.removeEventListener('pointerdown', onDown)
+      finish()
+      cancelAnimation()
     }
-  }, [initiallyCollapsed, map])
-  return null
+  }, [cancelAnimation, map])
+
+  const commitDraft = useCallback(() => {
+    const value = Number(draft)
+    if (Number.isFinite(value) && draft.trim() !== '') map.setBearing(normalize(value))
+    setEditing(false)
+  }, [draft, map])
+
+  const startEditing = useCallback(() => {
+    cancelAnimation()
+    setDraft((map.getBearing?.() ?? 0).toFixed(1).replace(/\.0$/, ''))
+    setEditing(true)
+  }, [cancelAnimation, map])
+
+  useEffect(() => {
+    if (editing) inputRef.current?.select()
+  }, [editing])
+
+  const DIRECTIONS = [
+    { key: 'north', label: 'N', target: 0, title: '正北朝上' },
+    { key: 'east', label: 'E', target: 90, title: '正东朝上' },
+    { key: 'south', label: 'S', target: 180, title: '正南朝上' },
+    { key: 'west', label: 'W', target: 270, title: '正西朝上' },
+  ] as const
+
+  return (
+    <div className="map-rotation-control">
+      <div
+        className={`map-bearing-compass${hoverDir ? ` hover-${hoverDir}` : ''}`}
+        ref={dialRef}
+        role="group"
+        aria-label={`地图旋转控件，当前 ${bearing.toFixed(1)} 度`}
+        onPointerMove={(event) => {
+          const next = directionFromPointer(event)
+          setHoverDir((current) => (current === next ? current : next))
+        }}
+        onPointerLeave={() => setHoverDir('')}
+        onPointerDownCapture={(event) => {
+          // 阻止 Leaflet 把指针事件当作地图拖动
+          event.stopPropagation()
+        }}
+        onWheelCapture={(event) => event.stopPropagation()}
+        onDoubleClickCapture={(event) => event.stopPropagation()}
+      >
+        {/* 表盘随地图角度旋转；方向按钮反向旋转以保持文字始终正立 */}
+        <i className="map-bearing-dial" style={{ transform: `rotate(${bearing}deg)` }}>
+          {DIRECTIONS.map((direction) => (
+            <span key={direction.key} className={`bearing-slot ${direction.key}`}>
+              <button
+                type="button"
+                className="bearing-direction"
+                title={`旋转到${direction.title}`}
+                aria-label={direction.title}
+                style={{ transform: `rotate(${-bearing}deg)` }}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  animateTo(direction.target)
+                }}
+              >
+                <b>{direction.label}</b>
+              </button>
+            </span>
+          ))}
+        </i>
+        <span className="map-bearing-needle"><b /><em /></span>
+        <button
+          type="button"
+          className={`map-bearing-pivot${editing ? ' editing' : ''}`}
+          title="点击输入旋转角度"
+          aria-label={`地图当前旋转 ${bearing.toFixed(1)} 度，点击输入角度`}
+          onClick={(event) => {
+            event.stopPropagation()
+            if (!editing) startEditing()
+          }}
+        >
+          {editing ? (
+            <input
+              ref={inputRef}
+              type="number"
+              min={0}
+              max={359.9}
+              step={0.1}
+              value={draft}
+              aria-label="地图旋转角度（度）"
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') { event.preventDefault(); commitDraft() }
+                if (event.key === 'Escape') { event.preventDefault(); setEditing(false) }
+              }}
+              onBlur={commitDraft}
+              onClick={(event) => event.stopPropagation()}
+            />
+          ) : (
+            // 359.6° 会四舍五入成 360，归一化回 0 避免显示"360°"
+            <b>{Math.round(bearing) % 360}°</b>
+          )}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 interface MapViewProps {
@@ -454,7 +508,6 @@ interface MapViewProps {
   onDeleteRoute: (uid: string) => void
   cinematicInitialView?: { center: [number, number]; zoom: number } | null
   cinematicBattleCompare?: string | null
-  cinematicCompassCollapsed?: boolean
 }
 
 function CinematicBattleHighlights({ stage }: { stage: string }) {
@@ -775,7 +828,6 @@ export default function MapView({
   onDeleteRoute,
   cinematicInitialView,
   cinematicBattleCompare,
-  cinematicCompassCollapsed = false,
 }: MapViewProps) {
   const bounds = useMemo(() => mapBounds(config), [config])
   // 桌面端允许继续缩小到 0.5，便于在窄窗口或总览场景中查看完整地图。
@@ -1167,7 +1219,7 @@ export default function MapView({
         <MapLayerPanes />
         <InteractiveLayerPanGuard />
         <TextEditMapLock active={editing != null} />
-        <MapRotationControl initiallyCollapsed={cinematicCompassCollapsed} />
+        <MapRotationControl />
         <SkillActionPlacement active={skillActionDraft != null && (skillActionDraft.skill?.placementMode ?? skillActionDraft.tacticalMode?.placementMode) !== 'target-unit' && (skillActionDraft.skill?.placementMode ?? skillActionDraft.tacticalMode?.placementMode) !== 'ally-unit'} onPlace={onPlaceSkillAction} onCancel={onCancelSkillAction} />
         <TileLayer
           url={config.tileUrl}

@@ -4399,7 +4399,6 @@ export default function App() {
               }
             : null}
           cinematicBattleCompare={isCinematicBattleCompare ? cinematicDemoStage : null}
-          cinematicCompassCollapsed={isCinematicObjectiveStates || isCinematicActionSequence}
           />
         </MapRegionErrorBoundary>
         <PointPanel
