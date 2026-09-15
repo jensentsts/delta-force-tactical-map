@@ -1278,6 +1278,7 @@ export default function MapView({
           capturedStageIndex={runtimeStageIndex}
           view={view}
           visible={layers.zones}
+          objectiveStates={battleContext.objectiveStates}
         />
         <VehicleRefreshLayer
           points={modeData?.vehicleRefreshPoints ?? []}

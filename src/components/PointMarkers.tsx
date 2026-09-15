@@ -1,5 +1,6 @@
-import { Marker, Polygon, useMap } from 'react-leaflet'
+import { Marker, Polyline, useMap } from 'react-leaflet'
 import { layerPane } from '../config/mapLayers'
+import { useStageBoundaries } from '../utils/stageBoundaries'
 import * as L from 'leaflet'
 import type { CapturePoint, PointStatus, Side, StageConfig, TacticalObjectiveState } from '../types'
 import { POINT_ICON_BASE } from '../config/points'
@@ -7,20 +8,24 @@ import { POINT_ICON_BASE } from '../config/points'
 const ZONE_ZOOM = 4.4
 
 /**
- * 据点归属颜色（问题3，统一三色规则）：
- * - 己方区域 = 绿色
- * - 中立/待争夺 = 白色
- * - 敌方区域 = 红色
- * 已攻下(captured)：攻方视角=己方绿 / 守方视角=敌方红
- * 争夺中(active)：中立白
- * 未激活(locked)：攻方视角=敌方红 / 守方视角=己方绿
+ * 交战区域（据点可占领区域）与阶段防线的边框颜色：**白色实线**（第 6 项需求）。
+ * 原来据点区域按归属取绿/红/金，防线取绿/红虚线；现在统一为白色实线，
+ * 让"哪里在打"用一条连续的中性线表达，攻守归属由区域填充与据点图标表达。
  */
-export function pointOwnColor(status: PointStatus, view: Side): string {
-  if (status === 'captured') return view === 'attack' ? '#01ff84' : '#e0453a'
-  if (status === 'active') return '#f4cf67'
-  return view === 'attack' ? '#e0453a' : '#01ff84'
-}
+const CONTESTED_BORDER_COLOR = '#ffffff'
+const FRONTLINE_BORDER_COLOR = '#ffffff'
+/** 边界线宽（像素） */
+const CONTESTED_BORDER_WEIGHT = 2
+const FRONTLINE_BORDER_WEIGHT = 2.5
 
+/**
+ * 据点标记（图标/进度环/状态色）沿用统一三色规则：
+ * 己方 = 绿、中立/待争夺 = 金、敌方 = 红。
+ *
+ * 注意：第 6 项之后，**区域边框**不再用这套颜色——交战区域与阶段防线统一为
+ * 白色实线（见下方 CONTESTED_BORDER_COLOR），归属由图标与进度环表达。
+ * 因此原先只服务于区域边框的 pointOwnColor 已移除。
+ */
 export function defaultObjectiveState(status: PointStatus): TacticalObjectiveState {
   if (status === 'captured') return { owner: 'attack', capturingSide: null, progress: 100 }
   if (status === 'locked') return { owner: 'defense', capturingSide: null, progress: 100 }
@@ -123,6 +128,17 @@ export default function PointMarkers({
   const activeStage = stages[capturedStageIndex]
   const activeStatus: PointStatus = 'active'
 
+  /**
+   * 区域边界线（第 6 项）：把所有边界多边形放在一起做一次共享边抵消，
+   * 避免同一条边被绿/红与白各画一遍，并保证外轮廓连续闭合无断点。
+   */
+  const boundaries = useStageBoundaries(
+    activeStage,
+    view,
+    objectiveStates,
+    { activity: false, capture: captureVisible, frontline: frontlineVisible },
+  )
+
   const makeIcon = (point: CapturePoint, status: PointStatus, selected: boolean) => {
     const objectiveState = objectiveStates[point.name] ?? defaultObjectiveState(status)
     const color = objectiveStateColor(objectiveState, view)
@@ -149,48 +165,44 @@ export default function PointMarkers({
 
   return (
     <>
-      {/* 防线区域（官网"区域"对象，虚线边框）：仅当前激活阶段 */}
-      {frontlineVisible && activeStage.zone ? (
-        <Polygon
-          key={`zone-${activeStage.id}`}
-          positions={activeStage.zone.latlngs}
+      {/* 阶段防线区域（第 6 项：白色实线，连续无断点） */}
+      {frontlineVisible && boundaries.frontlineLines.map((line) => (
+        <Polyline
+          key={`zone-${activeStage.id}-${line.key}`}
+          pane={layerPane('capturePointPane')}
+          positions={line.points}
           pathOptions={{
-            color: pointOwnColor(activeStatus, view),
-            weight: 2.5,
-            dashArray: '10 7',
-            opacity: 0.9,
-            fillColor: pointOwnColor(activeStatus, view),
-            fillOpacity: 0,
+            color: FRONTLINE_BORDER_COLOR,
+            weight: FRONTLINE_BORDER_WEIGHT,
+            opacity: 0.92,
+            dashArray: '0',
             className: 'demo-map-frontline',
+            lineJoin: 'round',
+            lineCap: 'round',
             // 绘制工具激活时禁用交互：否则多边形拦截鼠标事件，战斗区域内无法绘制
             interactive,
           }}
         />
-      ) : null}
+      ))}
 
-      {/* 据点可占领区域（官网据点对象 border，实线边框）：仅当前阶段 */}
-      {captureVisible && activeStage.points.map((point) => {
-          if (!point.capturable || point.capturable.length < 3) return null
-          const objectiveState = objectiveStates[point.name] ?? defaultObjectiveState(activeStatus)
-          const color = objectiveStateColor(objectiveState, view)
-          return (
-            <Polygon
-              key={`cap-${activeStage.id}-${point.name}`}
-              positions={point.capturable}
-              pathOptions={{
-                color,
-                weight: 2.2,
-                dashArray: '0',
-                opacity: 0.85,
-                fillColor: color,
-                fillOpacity: 0.1,
-                className: 'demo-map-capture',
-                // 绘制工具激活时禁用交互：据点可占领区域（战斗区域主体）不再拦截绘制
-                interactive,
-              }}
-            />
-          )
-      })}
+      {/* 交战区域边框（据点可占领区域，第 6 项：白色实线；共享边已抵消） */}
+      {captureVisible && boundaries.contestedLines.map((line) => (
+        <Polyline
+          key={`cap-${activeStage.id}-${line.key}`}
+          pane={layerPane('capturePointPane')}
+          positions={line.points}
+          pathOptions={{
+            color: CONTESTED_BORDER_COLOR,
+            weight: CONTESTED_BORDER_WEIGHT,
+            opacity: 0.95,
+            dashArray: '0',
+            className: 'demo-map-capture',
+            lineJoin: 'round',
+            lineCap: 'round',
+            interactive,
+          }}
+        />
+      ))}
 
       {/* 据点标记（A点图标 + "据点A"字样）：仅当前阶段；labelsVisible=false 时整体隐藏 */}
       {labelsVisible &&

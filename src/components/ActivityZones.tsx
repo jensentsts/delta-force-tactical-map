@@ -1,13 +1,24 @@
 import { useMemo } from 'react'
-import { Polygon } from 'react-leaflet'
+import { Polyline } from 'react-leaflet'
 import { layerPane } from '../config/mapLayers'
-import type { Side, StageConfig } from '../types'
+import { useStageBoundaries, type StageBoundaryOwner } from '../utils/stageBoundaries'
+import type { Side, StageConfig, TacticalObjectiveState } from '../types'
 
-/** 区域颜色统一规则（问题3）：己方=绿、敌方=红、中立=白 */
-const COLORS = {
+/** 区域颜色统一规则（问题3）：己方=绿、敌方=红、交战区域=白 */
+const COLORS: Record<'own' | 'enemy', string> = {
   own: '#01ff84',
-  deny: '#e0453a',
-} as const
+  enemy: '#e0453a',
+}
+/** 交战区域边框统一白色实线（第 6 项） */
+const CONTESTED_COLOR = '#ffffff'
+
+const OWNER_COLOR: Record<StageBoundaryOwner, string> = {
+  own: COLORS.own,
+  enemy: COLORS.enemy,
+  contested: CONTESTED_COLOR,
+  frontline: CONTESTED_COLOR,
+  neutral: COLORS.own,
+}
 
 interface ActivityZonesProps {
   stages: StageConfig[]
@@ -15,74 +26,58 @@ interface ActivityZonesProps {
   view: Side
   /** 是否显示活动区域图层 */
   visible: boolean
-}
-
-interface ZoneRender {
-  key: string
-  name: string
-  latlngs: [number, number][]
-  color: string
-  dash: string
+  /** 当前据点归属状态；用于与据点图层共享同一套边界计算 */
+  objectiveStates?: Record<string, TacticalObjectiveState>
 }
 
 /**
- * 攻守双方活动区域覆盖层（问题3 + 问题6 + 第九轮问题1）：
- * - 己方可活动区域 = 绿色（进攻方视角=攻方基地，防守方视角=守方基地）
- * - 敌方区域（不可活动）= 半透明红色
- * - 仅渲染当前争夺阶段；切换攻防视角时颜色自动联动。
- * - 第九轮：活动区仅作为视觉背景元素，固定 interactive: false，
- *   点击/悬停不会产生任何选中、高亮或名称提示（不影响其他图层交互）。
+ * 攻守双方活动区域 + 交战区域边框覆盖层。
+ *
+ * 第 6 项改动：边框不再各自独立绘制，而是与据点可占领区域一起做"共享边抵消"
+ * （见 utils/stageBoundaries），因此攻守活动区与交战区域相接的那条边只会被
+ * **白色实线**画一次，不再出现绿/红与白互相压盖、线条变粗与断点问题。
+ * 区域仍然没有填充（fillOpacity 0），保持纯背景语义与 interactive: false。
  */
-export default function ActivityZones({ stages, capturedStageIndex, view, visible }: ActivityZonesProps) {
-  const zone: ZoneRender[] = useMemo(() => {
-    const stage: StageConfig | undefined = stages[capturedStageIndex]
-    if (!stage) return []
-    const out: ZoneRender[] = []
+export default function ActivityZones({
+  stages,
+  capturedStageIndex,
+  view,
+  visible,
+  objectiveStates,
+}: ActivityZonesProps) {
+  const stage = stages[capturedStageIndex]
+  const boundaries = useStageBoundaries(stage, view, objectiveStates, {
+    activity: true,
+    capture: true,
+    frontline: false,
+  })
 
-    const attackZone = stage.attackBaseZone
-    if (attackZone.length >= 3) {
-      const isOwn = view === 'attack'
-      out.push({
-        key: 'atk-base',
-        name: isOwn ? '进攻方可活动区域（己方）' : '进攻方区域 · 不可活动（敌方）',
-        latlngs: attackZone,
-        color: isOwn ? COLORS.own : COLORS.deny,
-        dash: isOwn ? '0' : '6 4',
-      })
-    }
+  const lines = useMemo(
+    () => [...boundaries.activityLines, ...boundaries.contestedLines],
+    [boundaries.activityLines, boundaries.contestedLines],
+  )
 
-    const defZone = stage.defenseBaseZone
-    if (defZone.length >= 3) {
-      const isOwn = view === 'defense'
-      out.push({
-        key: 'def-base',
-        name: isOwn ? '防守方可活动区域（己方）' : '防守方区域 · 不可活动（敌方）',
-        latlngs: defZone,
-        color: isOwn ? COLORS.own : COLORS.deny,
-        dash: isOwn ? '0' : '6 4',
-      })
-    }
-    return out
-  }, [stages, capturedStageIndex, view])
-
-  if (!visible || zone.length === 0) return null
+  if (!visible || lines.length === 0) return null
 
   return (
     <>
-      {zone.map((z) => (
-        <Polygon
-      pane={layerPane('activityZonePane')}
-          key={z.key}
-          positions={z.latlngs}
+      {lines.map((line) => (
+        <Polyline
+          pane={layerPane('activityZonePane')}
+          key={line.key}
+          positions={line.points}
           pathOptions={{
-            color: z.color,
-            weight: 2,
-            opacity: 0.9,
-            dashArray: z.dash,
-            fillColor: z.color,
+            color: OWNER_COLOR[line.owner],
+            // 交战区域（白色）稍细，活动区边框稍粗；两者共享边只画白色那一条
+            weight: line.owner === 'contested' ? 2 : 2.4,
+            opacity: line.owner === 'contested' ? 0.95 : 0.9,
+            dashArray: line.owner === 'contested' ? '0' : '6 4',
+            fillColor: OWNER_COLOR[line.owner],
             fillOpacity: 0,
-            className: 'demo-map-activity',
-            // 第九轮：活动区纯视觉背景，永久禁用交互（无选中/高亮/提示）
+            lineJoin: 'round',
+            lineCap: 'round',
+            className: line.owner === 'contested' ? 'demo-map-capture' : 'demo-map-activity',
+            // 活动区纯视觉背景，永久禁用交互（无选中/高亮/提示）
             interactive: false,
           }}
         />
