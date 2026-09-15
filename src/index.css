@@ -427,6 +427,11 @@ body {
 
 .map-bearing-dial {
   position: absolute;
+  /* 显式居中：这个元素是 <i>，默认 display 是 inline，
+     父级 .map-bearing-compass 的 place-items 对它不生效。之前依赖父级 grid 居中，
+     实测 display:block 且未定位，导致子元素（指针）的参照系整体偏移 29px。 */
+  display: block;
+  inset: 8px;
   width: 60px;
   height: 60px;
   border: 1px solid rgba(155, 174, 181, .62);
@@ -495,8 +500,14 @@ body {
   }
 }
 
+/* 指针：必须是 block/flex 才能让 52×52 生效。
+   它是个 <span>，默认 display:inline —— 之前 width/height 被忽略，元素退化成
+   一行内联文本盒，被放在表盘内容区的文字基线上，整体偏移到左上 29px，
+   表现为"N/S 对顶三角形错位"。 */
 .map-bearing-needle {
-  position: relative;
+  display: block;
+  position: absolute;
+  inset: 4px;
   z-index: var(--z-build);
   width: 52px;
   height: 52px;
@@ -772,7 +783,7 @@ body {
 }
 
 /* 全屏按钮已移到地图右下角控件组（第 9 项），
-   原 .toolbar .fullscreen-btn 规则随之删除；新样式见 .map-corner-controls。 */
+   原 .toolbar .fullscreen-btn 规则随之删除；新样式见下方 .map-corner-btn。 */
 
 /* 战术板按钮（第二十一轮：导出 HTML / 方案管理） */
 .toolbar .tactical-btn {
@@ -9236,27 +9247,57 @@ body {
    地图右下角控件组（第 9 项）
    --------------------------------------------------------------------------
    顺序固定为：全屏 / 退出全屏、Zoom in、Zoom out。
-   全屏按钮原在顶栏；zoom 原用 Leaflet 自带控件（浏览器默认浅色按钮，与暗色军事
-   风格冲突）。现在合并为一个横向控件组并统一配色：
-     · 底色 --bg-btn，文字 --tx-1（与顶栏按钮一致）
-     · hover 边框与文字变强调绿
-     · 达到缩放上下限时禁用并降到 40% 不透明度
+   三个按钮各自是一个**独立的 Leaflet 控件**（而不是塞进一个控件）：
+   Leaflet 的 .leaflet-bottom 角是"从下往上堆叠"的容器，塞进单个控件会让整组
+   只贴在角落最底端；拆开后按 Leaflet 自身规则自上而下跌落，整组从角落向内延伸。
 
-   注意必须放在 #app 作用域内：地图容器渲染在 #app 内部，而这份基线里
-   同时存在 #app 作用域的控件规则（如 #app button { -webkit-tap-highlight-color }），
-   放在页面顶层也能匹配，但统一写在 #app 下更易读且不会被后续规则误覆盖。
+   层叠：.leaflet-control-container 是 .map-wrap 的子元素且 position: static，
+   其 .leaflet-top/.leaflet-bottom 的 z-index:1000 只在**地图自身的层叠上下文里**
+   生效；右侧「点位面板」与 .map-wrap 同级、DOM 在后，会整体盖住右下角。
+   给容器加 position:relative 会让所有控件的包含块从 .map-wrap 变成这个 0×0 的
+   容器，导致整套控件跑到地图左上角——不可取。
+
+   因此改用**让位**策略：右下角控件整体向左让开面板宽度，与顶栏收起按钮的
+   .collapse-float 同一思路（不遮挡、也不需要抬层叠）。
+
+   注意：偏移只加在**每个控件**上（见下方 data-corner-order 规则），
+   不要再给 .leaflet-bottom.leaflet-right 容器加 right —— 否则两处叠加，
+   控件会被推到地图中间。
    ========================================================================== */
-#app .map-corner-controls {
-  display: flex;
-  align-items: stretch;
-  overflow: hidden;
-  border: 1px solid var(--line-0) !important;
-  border-radius: 3px;
-  background: var(--bg-1);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, .5);
+#app .map-wrap .leaflet-control-container .leaflet-bottom,
+#app .map-wrap .leaflet-control-container .leaflet-top {
+  z-index: auto;
 }
 
-#app .map-corner-controls .map-corner-btn {
+#app .leaflet-bottom.leaflet-right .leaflet-control {
+  /* 三个按钮改成**横向一排**（需求：从左到右 全屏、zoom in、zoom out）。
+     Leaflet 的角落容器是竖向堆叠的，这里用绝对定位把每个控件钉到同一行：
+     从右往左依次 24px（缩小）、60px（放大）、96px（全屏）。 */
+  position: absolute;
+  margin: 0 !important;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 按钮横向间距 36px（按钮宽 34 + 间隙 2）；
+   data-corner-order：1=全屏 2=放大 3=缩小，从右往左排在距离面板 20px 处。 */
+#app .leaflet-bottom.leaflet-right .leaflet-control[data-corner-order='1'] {
+  right: calc(var(--right-panel-w, 0px) + 92px);
+  bottom: 14px;
+}
+
+#app .leaflet-bottom.leaflet-right .leaflet-control[data-corner-order='2'] {
+  right: calc(var(--right-panel-w, 0px) + 56px);
+  bottom: 14px;
+}
+
+#app .leaflet-bottom.leaflet-right .leaflet-control[data-corner-order='3'] {
+  right: calc(var(--right-panel-w, 0px) + 20px);
+  bottom: 14px;
+}
+
+#app .map-corner-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -9265,39 +9306,35 @@ body {
   padding: 0;
   /* 覆盖浏览器默认按钮外观（outset 边框 + buttonface 底色） */
   appearance: none;
-  border: 0;
-  border-left: 1px solid var(--line-0);
-  border-radius: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
   background: var(--bg-btn);
   color: var(--tx-1);
-  font-size: var(--fs-md);
   cursor: pointer;
-  transition: background .12s ease, color .12s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .45);
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
 }
 
-/* 第一个按钮（全屏）不需要左分隔线 */
-#app .map-corner-controls .map-corner-btn:first-child {
-  border-left: 0;
-}
-
-#app .map-corner-controls .map-corner-btn:disabled {
+#app .map-corner-btn:disabled {
   opacity: .4;
   cursor: not-allowed;
 }
 
-#app .map-corner-controls .map-corner-btn:focus-visible {
+#app .map-corner-btn:focus-visible {
   outline: 2px solid var(--green);
-  outline-offset: -2px;
+  outline-offset: 1px;
 }
 
 @media (hover: hover) {
-  #app .map-corner-controls .map-corner-btn:hover:not(:disabled) {
+  #app .map-corner-btn:hover:not(:disabled) {
+    border-color: var(--green);
     background: var(--bg-hover);
     color: var(--green);
   }
 }
 
-#app .map-corner-controls .map-corner-btn:active:not(:disabled) {
+#app .map-corner-btn:active:not(:disabled) {
   background: color-mix(in srgb, var(--green) 18%, var(--bg-btn));
+  border-color: var(--green);
   color: var(--green);
 }

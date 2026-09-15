@@ -283,7 +283,7 @@
   min-height: 34px;
 }
 
-.mobile-layout .map-corner-controls .map-corner-btn {
+.mobile-layout .map-corner-btn {
   width: 38px;
   height: 38px;
   line-height: 38px;
@@ -2196,7 +2196,7 @@ body:has(.platform-android.mobile-layout) .wg-notes-dock:not(.expanded):not(.col
 }
 
 /* 右下角控件组（第 9 项）：全屏 / 放大 / 缩小，触控端按 --touch-min 放大。 */
-.mobile-layout .map-corner-controls .map-corner-btn {
+.mobile-layout .map-corner-btn {
   width: var(--touch-min);
   height: var(--touch-min);
   line-height: var(--touch-min);

@@ -54,6 +54,13 @@ import VehicleRefreshLayer, { type RuntimeVehicleRefreshPoint, type RuntimeVehic
 import type { StageDeploy } from '../config/deployVehicles'
 import { rangeProgressStyle } from '../utils/rangeStyle'
 
+/**
+ * 指南针中心死区半径（px）。
+ * 中心读数按钮直径 34px（半径 17px），四个方向槽位位于半径 27px 处，
+ * 因此死区取 18px —— 既能排除中心按钮，又不会把方向槽位一起排除掉。
+ */
+const CENTER_DEAD_ZONE_PX = 18
+
 interface OfficialModeMapData {
   stages: StageConfig[]
   props: MapProp[]
@@ -175,36 +182,73 @@ function TextEditMapLock({ active }: { active: boolean }) {
 function MapCornerControls() {
   const map = useMap()
   useEffect(() => {
-    const control = new L.Control({ position: 'bottomright' })
-    control.onAdd = () => {
-      const container = L.DomUtil.create('div', 'leaflet-control leaflet-bar map-corner-controls')
-      L.DomEvent.disableClickPropagation(container)
-      L.DomEvent.disableScrollPropagation(container)
+    /**
+     * 用**独立控件**承载每个按钮，而不是把三个按钮塞进一个控件。
+     *
+     * 这样每个控件都是独立的 `.leaflet-control` 盒子，CSS 可以用绝对定位把它们
+     * 钉在同一行（需求：从左到右 全屏、zoom in、zoom out），而不受 Leaflet
+     * 角落容器"竖向堆叠"规则的限制。
+     *
+     * 每个控件带 `data-corner-order`（1=全屏 2=放大 3=缩小），CSS 依此定位——
+     * 比用 :nth-child 稳，Leaflet 在 addTo 时会把控件从角落容器里取出再插回，
+     * DOM 顺序并不总是注册顺序。
+     */
+    const controls: L.Control[] = []
+    let disposed = false
 
-      // 1) 全屏 / 退出全屏（Android 由原生层沉浸式全屏，CSS 会隐藏此按钮）
-      const fullscreenBtn = L.DomUtil.create('button', 'map-corner-btn map-corner-fullscreen', container) as HTMLButtonElement
-      fullscreenBtn.type = 'button'
-      const ENTER_ICON = '<path d="M6 2H2v4M10 2h4v4M6 14H2v-4M10 14h4v-4"/>'
-      const EXIT_ICON = '<path d="M2 6h4V2M14 6h-4V2M2 10h4v4M14 10h-4v4"/>'
-      const renderFullscreenBtn = () => {
-        const active = platform.isFullscreen()
-        fullscreenBtn.innerHTML = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${active ? EXIT_ICON : ENTER_ICON}</svg>`
-        fullscreenBtn.title = active ? '退出全屏' : '全屏'
-        fullscreenBtn.setAttribute('aria-label', active ? '退出全屏' : '全屏')
-        fullscreenBtn.setAttribute('aria-pressed', String(active))
+    const addControl = (order: number, build: () => { el: HTMLElement; cleanup?: () => void }) => {
+      const control = new L.Control({ position: 'bottomright' })
+      control.onAdd = () => {
+        const container = L.DomUtil.create('div', 'leaflet-control')
+        container.setAttribute('data-corner-order', String(order))
+        L.DomEvent.disableClickPropagation(container)
+        L.DomEvent.disableScrollPropagation(container)
+        const { el, cleanup } = build()
+        container.appendChild(el)
+        ;(container as HTMLElement & { _cleanup?: () => void })._cleanup = cleanup
+        return container
       }
-      renderFullscreenBtn()
-      L.DomEvent.on(fullscreenBtn, 'click', (event) => {
+      control.onRemove = () => {
+        const container = control.getContainer() as (HTMLElement & { _cleanup?: () => void }) | undefined
+        container?._cleanup?.()
+        const index = controls.indexOf(control)
+        if (index >= 0) controls.splice(index, 1)
+      }
+      control.addTo(map)
+      if (!disposed) controls.push(control)
+      return control
+    }
+
+    const ENTER_ICON = '<path d="M6 2H2v4M10 2h4v4M6 14H2v-4M10 14h4v-4"/>'
+    const EXIT_ICON = '<path d="M2 6h4V2M14 6h-4V2M2 10h4v4M14 10h-4v4"/>'
+
+    // 1) 全屏 / 退出全屏（Android 由原生层沉浸式全屏，CSS 会隐藏此按钮）
+    addControl(1, () => {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = 'map-corner-btn map-corner-fullscreen'
+      const render = () => {
+        const active = platform.isFullscreen()
+        button.innerHTML = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${active ? EXIT_ICON : ENTER_ICON}</svg>`
+        button.title = active ? '退出全屏' : '全屏'
+        button.setAttribute('aria-label', active ? '退出全屏' : '全屏')
+        button.setAttribute('aria-pressed', String(active))
+      }
+      render()
+      L.DomEvent.on(button, 'click', (event) => {
         L.DomEvent.stop(event)
         void platform.toggleFullscreen()
-        // 全屏状态由浏览器异步更新，下一帧再刷新图标
-        window.setTimeout(renderFullscreenBtn, 120)
+        window.setTimeout(render, 120)
       })
+      return { el: button }
+    })
 
-      // 2) Zoom in / 3) Zoom out（用 Leaflet 的 zoomIn/zoomOut，与滚轮缩放同一路径）
-      const makeZoomButton = (title: string, zoomIn: boolean) => {
-        const button = L.DomUtil.create('button', 'map-corner-btn', container) as HTMLButtonElement
+    // 2) Zoom in / 3) Zoom out（与滚轮缩放走同一条 Leaflet 路径）
+    const addZoom = (order: number, title: string, zoomIn: boolean) => {
+      addControl(order, () => {
+        const button = document.createElement('button')
         button.type = 'button'
+        button.className = 'map-corner-btn'
         const glyph = zoomIn ? '<path d="M8 3.5v9M3.5 8h9"/>' : '<path d="M3.5 8h9"/>'
         button.innerHTML = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">${glyph}</svg>`
         button.title = title
@@ -214,33 +258,22 @@ function MapCornerControls() {
           if (zoomIn) map.zoomIn()
           else map.zoomOut()
         })
-        return button
-      }
-      makeZoomButton('放大', true)
-      makeZoomButton('缩小', false)
-
-      // 缩放级别变化时刷新禁用态，避免在极限级别仍可点击
-      const syncZoomDisabled = () => {
-        const buttons = container.querySelectorAll<HTMLButtonElement>('.map-corner-btn')
-        const zoomInBtn = buttons[1]
-        const zoomOutBtn = buttons[2]
-        if (zoomInBtn) zoomInBtn.disabled = map.getZoom() >= map.getMaxZoom()
-        if (zoomOutBtn) zoomOutBtn.disabled = map.getZoom() <= map.getMinZoom()
-      }
-      map.on('zoomend', syncZoomDisabled)
-      syncZoomDisabled()
-
-      ;(container as HTMLElement & { _cornerCleanup?: () => void })._cornerCleanup = () => {
-        map.off('zoomend', syncZoomDisabled)
-      }
-      return container
+        const sync = () => {
+          button.disabled = zoomIn ? map.getZoom() >= map.getMaxZoom() : map.getZoom() <= map.getMinZoom()
+        }
+        map.on('zoomend', sync)
+        sync()
+        return { el: button, cleanup: () => map.off('zoomend', sync) }
+      })
     }
-    control.onRemove = () => {
-      const container = control.getContainer() as (HTMLElement & { _cornerCleanup?: () => void }) | undefined
-      container?._cornerCleanup?.()
+    addZoom(2, '放大', true)
+    addZoom(3, '缩小', false)
+
+    return () => {
+      disposed = true
+      for (const control of controls) control.remove()
+      controls.length = 0
     }
-    control.addTo(map)
-    return () => { control.remove() }
   }, [map])
   return null
 }
@@ -299,12 +332,31 @@ function MapRotationControl() {
    * 由指针相对表盘中心的角度判断当前悬停的方向（90° 扇区）。
    * 用 `atan2(x, -y)` 与拖动旋转同一套换算，保证"靠近哪个字母就浮现哪个"。
    */
+  /**
+   * 判断指针当前悬停在哪个方向，用于浮现对应按钮。
+   *
+   * 判定分两级，优先用真实命中，避免"看着在 N 上、却浮现 E"：
+   *   1) 指针是否直接落在某个槽位/按钮上（这正是用户看到的字母）；
+   *   2) 否则按相对表盘中心的角度取最近的 45° 扇区。
+   *
+   * 中心死区按实际几何设定：中心读数按钮直径 34px（半径 17px），
+   * 四个方向槽位在半径 27px 处，因此死区取 18px —— 既能排除中心按钮，
+   * 又不会把槽位一起排除掉（早期用 width*0.18≈13.7px 偏小，
+   * 后来误改成更大会直接把 27px 的槽位也吃掉）。
+   */
   const directionFromPointer = (event: React.PointerEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect()
+    const compass = event.currentTarget
+    const rect = compass.getBoundingClientRect()
     const x = event.clientX - (rect.left + rect.width / 2)
     const y = event.clientY - (rect.top + rect.height / 2)
-    // 中心读数区域不判方向，交给中心按钮自己处理
-    if (Math.hypot(x, y) < rect.width * 0.18) return ''
+
+    // 1) 直接命中某个方向槽位（屏幕上看到的字母）
+    const direct = document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-bearing-dir]')
+    if (direct) return direct.getAttribute('data-bearing-dir') ?? ''
+
+    // 2) 角度扇区
+    const radius = Math.hypot(x, y)
+    if (radius < CENTER_DEAD_ZONE_PX) return ''
     const angle = ((Math.atan2(x, -y) * 180 / Math.PI) + 360) % 360
     if (angle >= 315 || angle < 45) return 'north'
     if (angle < 135) return 'east'
@@ -450,6 +502,7 @@ function MapRotationControl() {
               <button
                 type="button"
                 className="bearing-direction"
+                data-bearing-dir={direction.key}
                 title={`旋转到${direction.title}`}
                 aria-label={direction.title}
                 /* 位置随表盘旋转（N 槽始终停在"地图正北"所在的屏幕方位），
