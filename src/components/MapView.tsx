@@ -1742,7 +1742,7 @@ export default function MapView({
         />
       )}
 
-      {/* 区域图例（第 7 项：绿=守方、红=攻方、白=交战区域；仅当前争夺阶段显示） */}
+      {/* 区域图例（绿=本方、红=敌方、白=交战区域；仅当前争夺阶段显示） */}
       {runtimeStageIndex < runtimeStages.length && (
         <div className={`zone-legend${legendOpen ? '' : ' collapsed'}`}>
           {legendOpen ? (
@@ -1755,15 +1755,15 @@ export default function MapView({
               </div>
               <div className="zone-legend-item">
                 <span className="swatch defense" />
-                本方 / 守方区域（绿）
+                本方区域
               </div>
               <div className="zone-legend-item">
                 <span className="swatch attack" />
-                敌方 / 攻方区域（红）
+                敌方区域
               </div>
               <div className="zone-legend-item">
                 <span className="swatch contested" />
-                交战区域（白色实线）
+                交战区域
               </div>
             </>
           ) : (
