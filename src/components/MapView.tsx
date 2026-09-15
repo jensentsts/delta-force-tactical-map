@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { CSSProperties, MutableRefObject } from 'react'
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import * as L from 'leaflet'
@@ -266,6 +267,35 @@ function MapRotationControl() {
   const [hoverDir, setHoverDir] = useState('')
 
   /**
+   * 指南针必须是一个**真正的 Leaflet 控件**：内容由 React 通过 portal 渲染进
+   * Leaflet 创建的控制容器。
+   *
+   * 早期版本直接 `return <div className="map-rotation-control">…`，这个 div 会被
+   * React 放进 map 容器内部，于是：
+   *   · 不进入 `.leaflet-top.leaflet-left`，拿不到「随左侧面板让位」的
+   *     `left: var(--left-panel-w)`，指南针被压在战术面板下面；
+   *   · 成为地图容器里一个普通绝对定位子元素，层叠与其它控件不可控；
+   *   · 放大（rotate 后）行为也随之异常。
+   * 注册为控件后，位置、层叠与 Leaflet 其它控件一致，且 rotate 不会影响它
+   * （控制容器不在 mapPane 内，不参与地图旋转）。
+   */
+  const [host, setHost] = useState<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const control = new L.Control({ position: 'topleft' })
+    control.onAdd = () => {
+      const container = L.DomUtil.create('div', 'leaflet-control map-rotation-control') as HTMLDivElement
+      // 阻止 Leaflet 把控件内的指针事件当作地图拖动/缩放
+      L.DomEvent.disableClickPropagation(container)
+      L.DomEvent.disableScrollPropagation(container)
+      setHost(container)
+      return container
+    }
+    control.onRemove = () => setHost(null)
+    control.addTo(map)
+    return () => { control.remove() }
+  }, [map])
+
+  /**
    * 由指针相对表盘中心的角度判断当前悬停的方向（90° 扇区）。
    * 用 `atan2(x, -y)` 与拖动旋转同一套换算，保证"靠近哪个字母就浮现哪个"。
    */
@@ -390,10 +420,11 @@ function MapRotationControl() {
     { key: 'west', label: 'W', target: 270, title: '正西朝上' },
   ] as const
 
-  return (
-    <div className="map-rotation-control">
-      <div
-        className={`map-bearing-compass${hoverDir ? ` hover-${hoverDir}` : ''}`}
+  // 渲染进 Leaflet 控件容器（host 由上方的 L.Control 创建）。
+  // 注意这里不再额外包一层 .map-rotation-control：类名已经挂在 Leaflet 容器上。
+  return host ? createPortal(
+    <div
+      className={`map-bearing-compass${hoverDir ? ` hover-${hoverDir}` : ''}`}
         ref={dialRef}
         role="group"
         aria-label={`地图旋转控件，当前 ${bearing.toFixed(1)} 度`}
@@ -409,7 +440,10 @@ function MapRotationControl() {
         onWheelCapture={(event) => event.stopPropagation()}
         onDoubleClickCapture={(event) => event.stopPropagation()}
       >
-        {/* 表盘随地图角度旋转；方向按钮反向旋转以保持文字始终正立 */}
+        {/* 表盘（刻度 + 四向标签 + 指针）整体随地图角度旋转，
+            这样 N 始终指向地图正北；指针自然指向"当前朝上的地图方向"。
+            这里刻意保持单一承载旋转的元素：早期版本把指针放在表盘外面，
+            旋转时指针不跟随，视觉上指针与刻度脱节。 */}
         <i className="map-bearing-dial" style={{ transform: `rotate(${bearing}deg)` }}>
           {DIRECTIONS.map((direction) => (
             <span key={direction.key} className={`bearing-slot ${direction.key}`}>
@@ -418,6 +452,9 @@ function MapRotationControl() {
                 className="bearing-direction"
                 title={`旋转到${direction.title}`}
                 aria-label={direction.title}
+                /* 位置随表盘旋转（N 槽始终停在"地图正北"所在的屏幕方位），
+                   但字母反向旋转保持正立：方向按钮同时是"把地图转到该方向朝上"
+                   的快捷入口，若字母跟着转到 180°，屏幕上会出现倒着的 S。 */
                 style={{ transform: `rotate(${-bearing}deg)` }}
                 onClick={(event) => {
                   event.stopPropagation()
@@ -428,8 +465,9 @@ function MapRotationControl() {
               </button>
             </span>
           ))}
+          {/* 指针放在表盘内部：跟随表盘一起旋转，避免与刻度脱节 */}
+          <span className="map-bearing-needle"><b /><em /></span>
         </i>
-        <span className="map-bearing-needle"><b /><em /></span>
         <button
           type="button"
           className={`map-bearing-pivot${editing ? ' editing' : ''}`}
@@ -462,9 +500,9 @@ function MapRotationControl() {
             <b>{Math.round(bearing) % 360}°</b>
           )}
         </button>
-      </div>
-    </div>
-  )
+    </div>,
+    host,
+  ) : null
 }
 
 interface MapViewProps {

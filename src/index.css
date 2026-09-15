@@ -353,12 +353,23 @@ body {
    方向按钮（N/E/S/W）默认隐藏，hover 对应方向时浮现；中心是角度读数，
    点击后变为可编辑数字。
    ========================================================================== */
+/* 这个类名现在挂在**Leaflet 控件容器**上（由 MapRotationControl 里的 L.Control
+   创建），因此 left/top 与 z-index 都已由 Leaflet 的 .leaflet-top.leaflet-left
+   负责，本页只做两件事：紧凑尺寸 + 与地图左上角留出间距。 */
 .map-rotation-control {
-  display: block;
+  /* 只占自身尺寸：早期写成 display:block 时会撑满整个控制容器宽度（实测
+     1424px），导致圆形表盘贴边、并且整条顶部横带被透明盒子覆盖而点不到。 */
+  display: inline-flex;
+  width: fit-content;
+  height: fit-content;
   overflow: visible;
   border: 0 !important;
   background: transparent;
   box-shadow: none !important;
+  /* 与地图左上角留出间距（left/top 由 .leaflet-top.leaflet-left 提供） */
+  margin: 10px 0 0 10px;
+  /* 确保控件本体接收指针事件（Hover / 点击 / 拖动旋转） */
+  pointer-events: auto;
 }
 
 /* 罗盘逐帧旋转时禁用图层自己的 transform 过渡，避免跨越 0°/360° 被插值成整圈。 */
@@ -377,10 +388,18 @@ body {
   border-radius: 50%;
   touch-action: none;
   cursor: grab;
+  /* 指针事件必须开启：控件本体要接收 hover/点击/拖动 */
+  pointer-events: auto;
   background: radial-gradient(circle, rgba(1, 255, 132, .1), transparent 64%), linear-gradient(180deg, #131c20, #080d10);
   outline: 1px solid rgba(0, 0, 0, .9);
   box-shadow: 0 0 7px rgba(1, 255, 132, .12);
   isolation: isolate;
+}
+
+/* 罗盘逐帧旋转时禁用图层自己的 transform 过渡，避免跨越 0°/360° 被插值成整圈。 */
+.leaflet-container.map-bearing-animating .leaflet-rotate-pane,
+.leaflet-container.map-bearing-animating .leaflet-rotate-pane * {
+  transition: none !important;
 }
 
 .map-bearing-compass:active { cursor: grabbing; }
@@ -904,20 +923,30 @@ body {
 }
 }
 
-/* 左：避开 Leaflet 左上角缩放控件（约 44px 宽），放在其右侧 */
+/* 左侧展开面板的浮动按钮。
+   原来是 left:56px 用来避开 Leaflet 左上角的缩放控件（约 44px 宽）。但第 9 项
+   把 zoom 控件移到了右下角、第 3 项把指南针放到了左上角，于是 56px 这个偏移
+   反而让按钮压在指南针上（实测指南针 x 10..86 / y 68..144，按钮 x 56..90 /
+   y 70..104，命中测试在按钮区域取到的是指南针的控制盒）。
+   现在改为：与新指南针左对齐，纵向排到指南针下方，两者不再重叠。
+   指南针盒子 = margin-top 10 + 表盘 76，故按钮 top 用 100px 起步。 */
 .collapse-float.left {
-  left: 56px;
-  top: calc(var(--toolbar-height) + 12px);
+  left: 12px;
+  top: calc(var(--toolbar-height) + 100px);
 }
 
-/* 右：地图右上角 */
+/* 右：地图右上角（该侧没有指南针，维持原位置） */
 .collapse-float.right {
   right: 12px;
   top: calc(var(--toolbar-height) + 12px);
 }
 
-/* 顶栏收起后不再占据布局高度，侧栏入口应随地图回到视口顶端。 */
-.app:has(> .toolbar.collapsed) .collapse-float.left,
+/* 顶栏收起后不再占据布局高度，侧栏入口应随地图回到视口顶端。
+   左侧仍需让开指南针，因此只把右侧收回顶端。 */
+.app:has(> .toolbar.collapsed) .collapse-float.left {
+  top: 100px;
+}
+
 .app:has(> .toolbar.collapsed) .collapse-float.right {
   top: 12px;
 }
