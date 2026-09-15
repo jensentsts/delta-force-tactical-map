@@ -19,6 +19,26 @@ import type * as L from 'leaflet'
  * z-index 是唯一顺序依据；混用两者会让顺序重新变得不可预测。
  */
 
+/**
+ * 父 pane 类型。
+ *
+ * **本项目全部自定义层都用 norotate，这是必须的，不是可选项。**
+ *
+ * 原因（已实测确认）：leaflet-rotate 的 Marker._setPos 会先做
+ * `rotatedPointToMapPanePoint(pos)`，即产出 **mapPane 参考系**的坐标；
+ * 而 rotatePane 的可见坐标系是相对于 rotatePane 自身的（两者相差
+ * rotatePanePos 与 bearing）。所以放在 rotatePane 里的 Marker 只有在
+ * bearing=0 时才恰好对齐；一旦旋转，再用缩放改变比例，图标就会相对地理
+ * 位置漂移（实测三张图的标记在 rotate+zoom 后偏移各不相同：+18/+22、
+ * +166/+208、−75/−19，即比例错误而非整体平移）。
+ *
+ * leaflet-rotate 自己也是这么做的：`_initPanes` 在启用旋转时把
+ * tilePane/overlayPane 挂在 rotatePane 下，而 shadowPane/markerPane/
+ * tooltipPane/popupPane **全部挂在 norotatePane** 下。
+ * 因此这里让所有自定义层与内置 Marker 层保持一致。
+ */
+export type MapLayerParent = 'rotate' | 'norotate'
+
 export interface MapLayerSpec {
   /** Pane 名称（会变成 `leaflet-<name>-pane` 类名）。 */
   pane: string
@@ -27,11 +47,10 @@ export interface MapLayerSpec {
   /** 该层的用途说明，便于日后维护者判断插入位置。 */
   label: string
   /**
-   * 挂到哪个父 pane 下。默认挂在 rotatePane（随地图旋转的那一层）。
-   * 需要"位置由 leaflet-rotate 独立换算、不参与 pane 旋转"的层（如文字标记、
-   * 路线命中层）挂到 norotatePane。
+   * 挂到哪个父 pane 下。默认 norotatePane（与 Leaflet 内置 markerPane 一致）。
+   * 只有纯矢量且确实需要贴着地图一起转的层才考虑 rotate——目前没有这样的层。
    */
-  parent?: 'rotate' | 'norotate'
+  parent?: MapLayerParent
 }
 
 /**
@@ -67,7 +86,7 @@ export const MAP_LAYER_ORDER: readonly MapLayerSpec[] = [
 
   // ---- 绘制系统 ----
   { pane: 'drawPane', z: 1000, label: '画笔图形（线/箭头/矩形/圆/防线）' },
-  { pane: 'drawMarkerPane', z: 1010, label: '文字标记（不参与旋转，避免双重偏移）', parent: 'norotate' },
+  { pane: 'drawMarkerPane', z: 1010, label: '文字标记' },
   { pane: 'drawGizmoPane', z: 1020, label: '图形编辑手柄与选中框' },
 
   // ---- 路线命中层：需要贴近 overlayPane 的命中优先级 ----
@@ -91,9 +110,13 @@ export function layerZ(pane: string): number {
   return spec.z
 }
 
-/** 取指定图层的父 pane 元素（未建时返回 undefined，由 Leaflet 挂到 mapPane）。 */
+/**
+ * 取指定图层的父 pane 元素。
+ * 默认 norotatePane —— 与 leaflet-rotate 给内置 markerPane 的选择保持一致，
+ * 这样 Marker._setPos 产出的 mapPane 参考系坐标才能落在正确的坐标系里。
+ */
 function parentPaneOf(map: L.Map, spec: MapLayerSpec): HTMLElement | undefined {
-  const parentName = spec.parent === 'norotate' ? 'norotatePane' : 'rotatePane'
+  const parentName = spec.parent === 'rotate' ? 'rotatePane' : 'norotatePane'
   return map.getPane(parentName) ?? map.getPane('mapPane') ?? undefined
 }
 
