@@ -8927,3 +8927,354 @@ body {
   font-size: var(--fs-caption);
   letter-spacing: .06em;
 }
+
+/* ==========================================================================
+   native-control-baseline：原生控件与滚动条统一风格化
+   --------------------------------------------------------------------------
+   此前只有零星几处零散处理：滚动条仅 .toolbar-draw-scroll / .panel-body /
+   .op-bubble-menu / .op-edit-popup / 模式配置器 有样式，其余容器（据点面板、
+   路线编辑器、战术板弹窗、备注面板、模式编辑器…）都是浏览器默认滚动条；
+   ::selection 从未定义；checkbox/radio 没有 appearance 归一；number 与
+   date/time 的原生微调按钮也未处理。这份基线补齐全部原生控件，因此**新增
+   任何容器都不需要再单独写滚动条**。
+
+   设计原则：
+   1) 作用域限定在 #app 与 .mode-workbench，避免影响导出 HTML 战术板
+      （那是一份独立文档，有自己的内联样式）；
+   2) 滚动条统一为 8px 细条，横向与纵向一致，轨道透明、滑块用 --line-2；
+   3) 用 :where() 降低特异性，组件自己的样式仍然可以覆盖；
+   4) color-scheme: dark 让尚未显式覆盖的原生部分（如滚动条角、下拉列表）
+      保持暗色，避免亮色闪烁。
+   ========================================================================== */
+
+#app,
+.mode-workbench {
+  color-scheme: dark;
+}
+
+/* 兜底：应用内所有元素都有明确的选框颜色与暗色原生外观。 */
+#app,
+.mode-workbench {
+  accent-color: var(--green);
+}
+
+/* ---------- 文本选区：默认的蓝色高亮与暗色军事风格冲突 ---------- */
+#app ::selection,
+#app::selection,
+.mode-workbench ::selection,
+.mode-workbench::selection {
+  background: color-mix(in srgb, var(--green) 32%, transparent);
+  color: var(--tx-0);
+}
+
+/* ---------- 滚动条：标准属性（Firefox 与 Chromium 121+） ---------- */
+#app *,
+.mode-workbench * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+
+/* 滚动条角落（横纵同时出现时的交汇方块）不留亮色。 */
+#app ::-webkit-scrollbar-corner,
+.mode-workbench ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ---------- 滚动条：WebKit/Blink 全量覆盖，纵向与横向一致 ---------- */
+#app ::-webkit-scrollbar,
+.mode-workbench ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+#app ::-webkit-scrollbar-track,
+.mode-workbench ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#app ::-webkit-scrollbar-thumb,
+.mode-workbench ::-webkit-scrollbar-thumb {
+  min-width: 32px;
+  min-height: 32px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background: var(--line-2);
+  background-clip: content-box;
+}
+
+#app ::-webkit-scrollbar-thumb:hover,
+.mode-workbench ::-webkit-scrollbar-thumb:hover {
+  background: var(--tx-4);
+  background-clip: content-box;
+}
+
+#app ::-webkit-scrollbar-thumb:active,
+.mode-workbench ::-webkit-scrollbar-thumb:active {
+  background: var(--green);
+  background-clip: content-box;
+}
+
+/* 横向滚动条稍矮一些，避免在窄容器里占据过多高度。 */
+#app ::-webkit-scrollbar:horizontal,
+.mode-workbench ::-webkit-scrollbar:horizontal {
+  height: 7px;
+}
+
+/* 已有显式滚动条样式的容器（工具栏绘制条、备注页签）保持"完全隐藏"的既有行为。 */
+#app .toolbar-draw-scroll,
+#app .toolbar-draw-scroll * {
+  scrollbar-width: none;
+}
+
+/* ---------- textarea：禁止横向拖拽破坏布局，纵向可调 ---------- */
+#app textarea,
+.mode-workbench textarea {
+  resize: vertical;
+}
+
+/* ---------- 复选框 / 单选框：去掉原生外观，统一为方框 + 强调色 ---------- */
+#app input[type='checkbox'],
+#app input[type='radio'],
+.mode-workbench input[type='checkbox'],
+.mode-workbench input[type='radio'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  flex: 0 0 auto;
+  border: 1px solid var(--line-2);
+  border-radius: 2px;
+  background: var(--bg-btn);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: border-color .12s ease, background .12s ease;
+}
+
+#app input[type='radio'],
+.mode-workbench input[type='radio'] {
+  border-radius: 50%;
+}
+
+#app input[type='checkbox']::before,
+.mode-workbench input[type='checkbox']::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  transform: scale(0);
+  transition: transform .12s ease;
+  background: var(--on-accent);
+  clip-path: polygon(14% 47%, 0 61%, 38% 100%, 100% 22%, 86% 8%, 36% 71%);
+}
+
+#app input[type='radio']::before,
+.mode-workbench input[type='radio']::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transform: scale(0);
+  transition: transform .12s ease;
+  background: var(--on-accent);
+}
+
+#app input[type='checkbox']:checked,
+#app input[type='radio']:checked,
+.mode-workbench input[type='checkbox']:checked,
+.mode-workbench input[type='radio']:checked {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+#app input[type='checkbox']:checked::before,
+#app input[type='radio']:checked::before,
+.mode-workbench input[type='checkbox']:checked::before,
+.mode-workbench input[type='radio']:checked::before {
+  transform: scale(1);
+}
+
+#app input[type='checkbox']:indeterminate,
+.mode-workbench input[type='checkbox']:indeterminate {
+  border-color: var(--green);
+}
+
+#app input[type='checkbox']:disabled,
+#app input[type='radio']:disabled,
+.mode-workbench input[type='checkbox']:disabled,
+.mode-workbench input[type='radio']:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+#app input[type='checkbox']:focus-visible,
+#app input[type='radio']:focus-visible,
+.mode-workbench input[type='checkbox']:focus-visible,
+.mode-workbench input[type='radio']:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+}
+
+/* ---------- number：隐藏原生上下微调箭头 ---------- */
+#app input[type='number'],
+.mode-workbench input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+#app input[type='number']::-webkit-outer-spin-button,
+#app input[type='number']::-webkit-inner-spin-button,
+.mode-workbench input[type='number']::-webkit-outer-spin-button,
+.mode-workbench input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+/* ---------- search：去掉原生取消按钮与装饰 ---------- */
+#app input[type='search'],
+.mode-workbench input[type='search'] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+#app input[type='search']::-webkit-search-decoration,
+#app input[type='search']::-webkit-search-cancel-button,
+#app input[type='search']::-webkit-search-results-button,
+#app input[type='search']::-webkit-search-results-decoration,
+.mode-workbench input[type='search']::-webkit-search-decoration,
+.mode-workbench input[type='search']::-webkit-search-cancel-button,
+.mode-workbench input[type='search']::-webkit-search-results-button,
+.mode-workbench input[type='search']::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ---------- date / time / month / week：让原生指示图标适配暗色 ---------- */
+#app input[type='date'],
+#app input[type='time'],
+#app input[type='datetime-local'],
+#app input[type='month'],
+#app input[type='week'],
+.mode-workbench input[type='date'],
+.mode-workbench input[type='time'],
+.mode-workbench input[type='datetime-local'],
+.mode-workbench input[type='month'],
+.mode-workbench input[type='week'] {
+  color-scheme: dark;
+}
+
+#app input::-webkit-calendar-picker-indicator,
+.mode-workbench input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(.72);
+}
+
+/* ---------- file：不展示原生按钮文字，统一走自定义触发元素 ---------- */
+#app input[type='file'],
+.mode-workbench input[type='file'] {
+  color: var(--tx-3);
+  font-size: var(--fs-caption);
+}
+
+#app input[type='file']::file-selector-button,
+.mode-workbench input[type='file']::file-selector-button {
+  margin-right: 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--line-0);
+  border-radius: 2px;
+  background: var(--bg-btn);
+  color: var(--tx-1);
+  font: inherit;
+  font-size: var(--fs-caption);
+  cursor: pointer;
+}
+
+#app input[type='file']::file-selector-button:hover,
+.mode-workbench input[type='file']::file-selector-button:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+/* ---------- placeholder：统一弱化色，避免各浏览器默认灰不一致 ---------- */
+#app ::placeholder,
+.mode-workbench ::placeholder {
+  color: var(--tx-4);
+  opacity: 1;
+}
+
+/* ---------- select：统一下拉箭头与选项底色 ---------- */
+#app select,
+.mode-workbench select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 22px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--tx-3) 50%),
+    linear-gradient(135deg, var(--tx-3) 50%, transparent 50%);
+  background-position: calc(100% - 12px) calc(50% - 1px), calc(100% - 8px) calc(50% - 1px);
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+
+#app select:disabled,
+.mode-workbench select:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* 原生下拉列表（Windows Chromium 会渲染系统弹层）尽量贴近暗色主题。 */
+#app select option,
+.mode-workbench select option {
+  background: var(--bg-1);
+  color: var(--tx-1);
+}
+
+/* ---------- 进度条 / 计量条 ---------- */
+#app progress,
+.mode-workbench progress {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 6px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--bg-btn);
+  overflow: hidden;
+}
+
+#app progress::-webkit-progress-bar,
+.mode-workbench progress::-webkit-progress-bar {
+  background: var(--bg-btn);
+}
+
+#app progress::-webkit-progress-value,
+.mode-workbench progress::-webkit-progress-value {
+  background: var(--green);
+}
+
+#app progress::-moz-progress-bar,
+.mode-workbench progress::-moz-progress-bar {
+  background: var(--green);
+}
+
+/* ---------- 细节：去掉 iOS/触屏点按高亮与镜像渐变残留 ---------- */
+#app button,
+#app input,
+#app select,
+#app textarea,
+#app a,
+#app summary,
+.mode-workbench button,
+.mode-workbench input,
+.mode-workbench select,
+.mode-workbench textarea,
+.mode-workbench a,
+.mode-workbench summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 焦点可见性：组件自身未声明时给一个统一兜底环，避免"看不见焦点"。 */
+#app :where(button, a, summary, [role='button']):focus-visible,
+.mode-workbench :where(button, a, summary, [role='button']):focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
