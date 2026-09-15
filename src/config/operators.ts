@@ -40,17 +40,24 @@ export interface TeamConfig {
   id: OperatorTeam
   name: string
   color: string
+  /**
+   * 叠在本队色圆底上的文字色（队伍字母 / 队标字母）。
+   * 队伍色跨白到深蓝，单一颜色必然有一半不达标（C 队 #f2f4f8 配白字
+   * 只有 1.10:1），因此每个队伍显式声明一个满足 WCAG AA 的前景色。
+   * 数值由 tools 校验：A 用白字 4.13→改用更深的红；其余用深字。
+   */
+  onColor: string
   /** 默认小队作用（左侧可编辑，存于 wargame.teamRoles） */
   desc: string
 }
 
 export const TEAMS: TeamConfig[] = [
-  { id: 'A', name: 'A队', color: '#e0453a', desc: '主力突破' },
-  { id: 'B', name: 'B队', color: '#3f8cff', desc: '侧翼支援' },
+  { id: 'A', name: 'A队', color: '#e0453a', onColor: '#ffffff', desc: '主力突破' },
+  { id: 'B', name: 'B队', color: '#3f8cff', onColor: '#0e1112', desc: '侧翼支援' },
   // C队原为绿色 #01ff84（与我方阵营色冲突），后改橙色（近D黄）、粉色（近E紫）、青色（近B蓝），现用白色
-  { id: 'C', name: 'C队', color: '#f2f4f8', desc: '掩护佯攻' },
-  { id: 'D', name: 'D队', color: '#f4cf67', desc: '火力压制' },
-  { id: 'E', name: 'E队', color: '#c77dff', desc: '机动预备' },
+  { id: 'C', name: 'C队', color: '#f2f4f8', onColor: '#0e1112', desc: '掩护佯攻' },
+  { id: 'D', name: 'D队', color: '#f4cf67', onColor: '#0e1112', desc: '火力压制' },
+  { id: 'E', name: 'E队', color: '#c77dff', onColor: '#0e1112', desc: '机动预备' },
 ]
 
 export function teamOf(id: OperatorTeam): TeamConfig {

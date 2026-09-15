@@ -81,7 +81,7 @@ function buildVehicleIcon(v: VehicleItem, view: Side, expanded: boolean, showCon
   return L.divIcon({
     className: 'veh-marker-wrap',
     html: `
-      <div class="${cls}" style="--vc:${sideColor};--veh-team:${team?.color ?? sideColor};--veh-fill:${team?.color ?? sideColor}">
+      <div class="${cls}" data-kb-unit="vehicle" data-kb-uid="${v.uid}" tabindex="0" role="button" aria-label="载具 ${v.name}，方向键移动，Delete 删除" style="--vc:${sideColor};--veh-team:${team?.color ?? sideColor};--team-on:${team?.onColor ?? '#ffffff'};--veh-fill:${team?.color ?? sideColor}">
         <span class="veh-side-ring"></span>
         <span class="veh-bg"></span>
         <img class="veh-icon" src="${v.iconUrl}" alt="${v.name}" draggable="false" />

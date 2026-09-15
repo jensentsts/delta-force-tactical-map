@@ -37,13 +37,13 @@
   padding: 0 !important;
   overflow: visible !important;
   pointer-events: none;
-  z-index: 1100;
+  z-index: var(--z-overlay);
 }
 .mobile-layout .toolbar.collapsed .toolbar-expand-btn {
   pointer-events: auto;
 }
 .platform-android.mobile-layout .collapse-float {
-  z-index: 1300;
+  z-index: var(--z-overlay);
 }
 
 /* 干员信息面板在移动端固定在安全区域内，避免地图边缘坐标将其推出视口。 */
@@ -57,7 +57,7 @@
   min-width: 0 !important;
   max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 16px) !important;
   transform: translateX(-50%) !important;
-  z-index: 1500;
+  z-index: var(--z-popover);
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 16px);
   overflow: hidden;
   overscroll-behavior: contain;
@@ -127,11 +127,11 @@
 }
 
 .platform-android.mobile-layout .op-tactical-item-info b {
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 
 .platform-android.mobile-layout .op-tactical-item-info small {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
 }
 
 .platform-android.mobile-layout .op-tactical-item-actions {
@@ -146,7 +146,7 @@
   min-width: 0;
   height: 42px;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 
 .mobile-layout .toolbar .logo-area {
@@ -188,7 +188,7 @@
 .mobile-layout .left-panel .panel-head,
 .mobile-layout .left-panel .panel-sec,
 .mobile-layout .left-panel .wargame-panel {
-  font-size: 11px;
+  font-size: var(--fs-caption);
 }
 
 .mobile-layout .left-panel .panel-head { padding: 7px 9px; }
@@ -197,7 +197,7 @@
 .mobile-layout .left-panel select,
 .mobile-layout .left-panel input { min-height: 28px; }
 
-.mobile-layout .point-panel .point-head { padding: 8px 9px; font-size: 12px; }
+.mobile-layout .point-panel .point-head { padding: 8px 9px; font-size: var(--fs-xs); }
 .mobile-layout .point-panel .stage-steps { padding: 7px 8px; }
 
 .mobile-route-edit-action {
@@ -259,7 +259,7 @@
   border: 1px solid var(--gold);
   border-radius: 4px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, .5);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   touch-action: manipulation;
 }
 
@@ -270,7 +270,7 @@
 
 .mobile-layout .route-selection-hint {
   max-width: 118px;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   line-height: 15px;
 }
 
@@ -332,9 +332,10 @@
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
-
+@media (hover: hover) {
 .platform-android .edit-handle-wrap:hover .edit-handle-dot {
   transform: translate(-50%, -50%);
+}
 }
 
 .mobile-layout .edit-style-trigger,
@@ -343,7 +344,7 @@
   height: 44px;
   min-width: 44px;
   min-height: 44px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   touch-action: manipulation;
 }
 
@@ -375,7 +376,7 @@
 .mobile-layout .text-style-panel .tsp-head {
   position: sticky;
   top: -10px;
-  z-index: 1;
+  z-index: var(--z-build);
   margin: -10px -10px 8px;
   padding: 9px 10px 7px;
   background: rgba(14, 17, 18, 0.99);
@@ -396,7 +397,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel {
 body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   position: sticky;
   top: -10px;
-  z-index: 2;
+  z-index: var(--z-build);
   margin: -10px -10px 8px;
   padding: 9px 10px 7px;
   background: rgba(14, 17, 18, 0.99);
@@ -417,7 +418,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 
 .mobile-layout .runtime-data-notice-head {
   min-height: 32px;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
 }
 
 .mobile-layout .runtime-data-notice-details {
@@ -493,8 +494,8 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   text-align: left;
 }
 .mobile-layout.mode-workbench .mode-workbench-context .map-select-label { display: none; }
-.mobile-layout.mode-workbench .mode-workbench-context .map-select-value { min-width: 0; max-width: none; flex: 1 1 auto; overflow: hidden; font-size: 12px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
-.mobile-layout.mode-workbench .mode-workbench-context .map-select-btn i { width: 10px; flex: 0 0 10px; margin-left: auto; font-size: 8px; }
+.mobile-layout.mode-workbench .mode-workbench-context .map-select-value { min-width: 0; max-width: none; flex: 1 1 auto; overflow: hidden; font-size: var(--fs-xs); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.mobile-layout.mode-workbench .mode-workbench-context .map-select-btn i { width: 10px; flex: 0 0 10px; margin-left: auto; font-size: var(--fs-micro); }
 .mobile-layout.mode-workbench .mode-mobile-context-trigger {
   min-width: 116px;
   height: 36px;
@@ -512,12 +513,12 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 }
 .mobile-layout.mode-workbench .mode-mobile-context-trigger span,
 .mobile-layout.mode-workbench .mode-mobile-context-trigger strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mobile-layout.mode-workbench .mode-mobile-context-trigger span { font-size: 10px; }
-.mobile-layout.mode-workbench .mode-mobile-context-trigger strong { color: var(--tx-4); font-size: 8px; font-weight: 500; }
-.mobile-layout.mode-workbench .mode-mobile-context-trigger i { grid-column: 2; grid-row: 1 / 3; color: var(--gold); font-size: 9px; }
+.mobile-layout.mode-workbench .mode-mobile-context-trigger span { font-size: var(--fs-2xs); }
+.mobile-layout.mode-workbench .mode-mobile-context-trigger strong { color: var(--tx-4); font-size: var(--fs-micro); font-weight: 500; }
+.mobile-layout.mode-workbench .mode-mobile-context-trigger i { grid-column: 2; grid-row: 1 / 3; color: var(--gold); font-size: var(--fs-2xs); }
 .mobile-layout.mode-workbench .mode-mobile-context-trigger.active { border-color: var(--gold); }
 .mobile-layout.mode-workbench .mode-side-switch { width: 76px; flex: 0 0 76px; height: 36px; }
-.mobile-layout.mode-workbench .mode-side-switch span { font-size: 8px; }
+.mobile-layout.mode-workbench .mode-side-switch span { font-size: var(--fs-micro); }
 .mobile-layout.mode-workbench .mode-side-switch i { width: 32px; }
 .mobile-layout.mode-workbench .mode-side-switch.defense i { transform: translateX(40px); }
 .mobile-layout.mode-workbench .mode-workbench-history { height: 36px; flex: 0 0 auto; overflow: hidden; box-sizing: border-box; border-radius: 3px; }
@@ -528,7 +529,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 .mobile-layout.mode-workbench .mode-workbench-history button i,
 .mobile-layout.mode-workbench .mode-mobile-more-trigger i,
 .mobile-layout.mode-workbench .mode-workbench-toolbar-collapse i,
-.mobile-layout.mode-workbench .mode-workbench-close i { font-size: 13px; }
+.mobile-layout.mode-workbench .mode-workbench-close i { font-size: var(--fs-sm); }
 .mobile-layout.mode-workbench .mode-mobile-more-trigger,
 .mobile-layout.mode-workbench .mode-workbench-toolbar-collapse,
 .mobile-layout.mode-workbench .mode-workbench-close {
@@ -546,7 +547,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   gap: 5px;
   padding: 0 8px;
 }
-.mobile-layout.mode-workbench .mode-workbench-close .mode-workbench-close-label { display: inline; font-size: 11px; }
+.mobile-layout.mode-workbench .mode-workbench-close .mode-workbench-close-label { display: inline; font-size: var(--fs-caption); }
 .mobile-layout.mode-workbench .mode-mobile-more-trigger.active { border-color: var(--gold); color: var(--gold); }
 .mobile-layout.mode-workbench .mode-workbench-layers,
 .mobile-layout.mode-workbench .mode-workbench-data,
@@ -565,7 +566,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 .mobile-layout.mode-workbench .mode-asset-palette,
 .mobile-layout.mode-workbench .mode-config-editor {
   position: absolute;
-  z-index: 2100;
+  z-index: var(--z-app);
   top: 0;
   bottom: 0;
   max-height: none;
@@ -590,7 +591,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 }
 .platform-android.mobile-layout.mode-workbench .mode-config-panel-float {
   position: absolute;
-  z-index: 2200;
+  z-index: var(--z-modal-top);
   top: 6px;
   display: inline-flex;
 }
@@ -615,7 +616,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   justify-self: center;
   width: 26px;
   color: var(--mc-accent);
-  font-size: 22px;
+  font-size: var(--fs-xl);
   line-height: 1;
   text-align: center;
 }
@@ -623,7 +624,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   grid-column: 2;
   grid-row: 1;
   align-self: end;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.2;
 }
 .mobile-layout.mode-workbench .mode-asset-palette header span {
@@ -631,7 +632,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   grid-row: 2;
   align-self: start;
   overflow: visible;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   line-height: 1.25;
   white-space: normal;
 }
@@ -655,18 +656,18 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   display: none;
 }
 .mobile-layout.mode-workbench .mode-workbench-statusbar > span:first-child { min-width: 0; }
-.mobile-layout.mode-workbench .mode-workbench-statusbar > span:nth-child(n + 2) { font-size: 8px; }
+.mobile-layout.mode-workbench .mode-workbench-statusbar > span:nth-child(n + 2) { font-size: var(--fs-micro); }
 
 .mode-mobile-sheet-backdrop {
   position: fixed;
-  z-index: 4800;
+  z-index: var(--z-overlay);
   inset: 0;
   background: rgba(0, 0, 0, .28);
 }
 .mode-mobile-context-panel,
 .mode-mobile-more-panel {
   position: fixed;
-  z-index: 4810;
+  z-index: var(--z-overlay);
   top: calc(48px + var(--safe-top));
   max-height: calc(100dvh - 56px - var(--safe-top) - var(--safe-bottom));
   overflow: hidden auto;
@@ -690,7 +691,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 .mode-mobile-context-panel .map-select-value { margin-left: auto; }
 .mobile-layout.mode-workbench .map-select-menu {
   position: fixed;
-  z-index: 5000;
+  z-index: var(--z-toast);
   min-width: 0;
   padding: 4px;
   display: flex;
@@ -703,11 +704,11 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   max-height: calc(100dvh - 60px - var(--safe-top) - var(--safe-bottom));
   overflow-y: auto;
 }
-.mobile-layout.mode-workbench .map-select-item { min-width: 0; min-height: 40px; padding: 8px 10px; overflow: hidden; color: var(--tx-1); background: transparent; border: 1px solid transparent; font-size: 12px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
-.mode-mobile-more-title { display: block; margin: 9px 0 5px; color: var(--tx-4); font-size: 9px; letter-spacing: .08em; }
+.mobile-layout.mode-workbench .map-select-item { min-width: 0; min-height: 40px; padding: 8px 10px; overflow: hidden; color: var(--tx-1); background: transparent; border: 1px solid transparent; font-size: var(--fs-xs); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.mode-mobile-more-title { display: block; margin: 9px 0 5px; color: var(--tx-4); font-size: var(--fs-2xs); letter-spacing: .08em; }
 .mode-mobile-more-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
-.mode-mobile-more-grid button { min-width: 0; min-height: 46px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; padding: 4px; border: 1px solid var(--line-0); background: var(--bg-btn); color: var(--tx-2); font-size: 9px; }
-.mode-mobile-more-grid button i { font-size: 13px; }
+.mode-mobile-more-grid button { min-width: 0; min-height: 46px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; padding: 4px; border: 1px solid var(--line-0); background: var(--bg-btn); color: var(--tx-2); font-size: var(--fs-2xs); }
+.mode-mobile-more-grid button i { font-size: var(--fs-sm); }
 .mode-mobile-more-grid button.active { border-color: var(--green); color: var(--green); background: rgba(1, 255, 132, .08); }
 .mode-mobile-more-grid button.primary { border-color: var(--green); color: var(--green); }
 .mode-mobile-more-grid button.danger { border-color: rgba(224, 69, 58, .55); color: #ff9e98; }
@@ -716,7 +717,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 .mode-mobile-map-actions,
 .mode-config-mobile-zone-actions {
   position: fixed;
-  z-index: 2450;
+  z-index: var(--z-overlay);
   left: 50%;
   bottom: calc(36px + env(safe-area-inset-bottom, 0px));
   max-width: calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 18px);
@@ -731,9 +732,9 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   box-shadow: 0 8px 24px rgba(0, 0, 0, .65);
   transform: translateX(-50%);
 }
-.mode-mobile-map-actions > span { padding: 0 6px; color: var(--gold); font-size: 9px; white-space: nowrap; }
+.mode-mobile-map-actions > span { padding: 0 6px; color: var(--gold); font-size: var(--fs-2xs); white-space: nowrap; }
 .mode-mobile-map-actions button,
-.mode-config-mobile-zone-actions button { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 9px; border: 1px solid var(--line-0); background: var(--bg-btn); color: var(--tx-1); font-size: 10px; white-space: nowrap; }
+.mode-config-mobile-zone-actions button { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 9px; border: 1px solid var(--line-0); background: var(--bg-btn); color: var(--tx-1); font-size: var(--fs-2xs); white-space: nowrap; }
 .mode-mobile-map-actions button.primary,
 .mode-config-mobile-zone-actions button.active { border-color: var(--green); color: var(--green); background: rgba(1, 255, 132, .1); }
 .mode-mobile-map-actions button.danger,
@@ -742,7 +743,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 .mode-config-mobile-zone-actions button:disabled { opacity: .35; }
 .platform-android.mode-workbench .mode-config-vertex-wrap { width: 44px !important; height: 44px !important; margin-left: -22px !important; margin-top: -22px !important; display: grid !important; place-items: center; }
 .platform-android.mode-workbench .mode-config-vertex-wrap .mode-config-vertex { width: 20px; height: 20px; display: grid; place-items: center; }
-.platform-android.mode-workbench .mode-config-vertex-wrap.active .mode-config-vertex { border-color: #fff; box-shadow: 0 0 0 3px rgba(244, 207, 103, .55); }
+.platform-android.mode-workbench .mode-config-vertex-wrap.active .mode-config-vertex { border-color: var(--on-solid); box-shadow: 0 0 0 3px rgba(244, 207, 103, .55); }
 .platform-android.mode-workbench .mode-config-spawn-wrap::before,
 .platform-android.mode-workbench .mode-config-objective-wrap::before,
 .platform-android.mode-workbench .mode-config-prop-wrap::before,
@@ -761,8 +762,8 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   border-radius: 3px;
   outline: 0;
   background: rgba(7, 12, 14, .95);
-  color: #fff;
-  font-size: 14px;
+  color: var(--on-solid);
+  font-size: var(--fs-md);
 }
 
 /* 部署模式下由地图统一接收落点。模式配置器把对象放在多个自定义 Pane 中，
@@ -808,7 +809,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 .mobile-layout .toolbar .map-select-menu {
   position: fixed;
   top: calc(var(--toolbar-height) + var(--safe-top));
-  z-index: 5000;
+  z-index: var(--z-toast);
   width: max-content;
   min-width: 136px;
   max-width: min(72vw, 260px);
@@ -819,7 +820,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 .mobile-layout .toolbar .map-select-item {
   min-height: 38px;
   padding: 8px 11px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 /* Android 已由原生层沉浸式全屏；键盘说明和网页全屏按钮在触控端没有意义。 */
@@ -835,7 +836,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   width: 30px;
   height: 30px;
   min-height: 30px;
-  font-size: 11px;
+  font-size: var(--fs-caption);
 }
 
 .mobile-layout .op-marker.expanded:not(.connect):not(.dead) .op-rotate-control {
@@ -850,7 +851,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   border-radius: 50%;
   background: rgba(8, 13, 15, .96);
   color: var(--op-team);
-  font-size: 11px;
+  font-size: var(--fs-caption);
   touch-action: none;
 }
 
@@ -860,7 +861,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   height: 44px;
   min-width: 44px;
   min-height: 44px;
-  font-size: 16px;
+  font-size: var(--fs-lg);
 }
 
 .mobile-layout .tm-marker .tm-route { right: -29px; top: 1px; }
@@ -875,7 +876,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   position: absolute;
   left: -29px;
   top: 1px;
-  z-index: 8;
+  z-index: var(--z-build);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -910,7 +911,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   border-radius: 50%;
   background: rgba(35, 12, 16, .95);
   color: #ff766c;
-  z-index: 3;
+  z-index: var(--z-build);
   touch-action: manipulation;
 }
 
@@ -1007,7 +1008,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   pointer-events: auto;
   left: -54px;
   bottom: -42px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .op-marker .op-delete {
@@ -1018,7 +1019,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   position: absolute;
   left: -29px;
   top: -4px;
-  z-index: 8;
+  z-index: var(--z-build);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1042,7 +1043,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   min-height: 44px;
   left: -54px;
   top: -43px;
-  font-size: 18px;
+  font-size: var(--fs-lg);
 }
 
 .mobile-layout .veh-marker.expanded .veh-side svg,
@@ -1056,7 +1057,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   position: absolute;
   right: -54px;
   top: -4px;
-  z-index: 8;
+  z-index: var(--z-build);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1069,7 +1070,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   border-radius: 50%;
   color: var(--building-fill);
   background: rgba(8, 13, 15, .96);
-  font-size: 16px;
+  font-size: var(--fs-lg);
 }
 
 .mobile-layout .veh-rotate-control,
@@ -1078,7 +1079,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 .mobile-layout .building-delete-control {
   display: none;
   position: absolute;
-  z-index: 12;
+  z-index: var(--z-build);
   align-items: center;
   justify-content: center;
   width: 44px;
@@ -1091,7 +1092,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   color: var(--tx-1);
   background: rgba(8, 13, 15, .96);
   box-shadow: 0 5px 15px rgba(0, 0, 0, .5);
-  font-size: 18px;
+  font-size: var(--fs-lg);
 }
 
 .mobile-layout .veh-marker.expanded .veh-rotate-control,
@@ -1141,7 +1142,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   height: 44px;
   min-width: 44px;
   min-height: 44px;
-  font-size: 16px;
+  font-size: var(--fs-lg);
 }
 
 .mobile-layout .tm-marker .tm-route,
@@ -1160,7 +1161,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 .mobile-layout .building-unit.expanded .building-side { left: -44px; top: -35px; }
 
 .mobile-layout .veh-marker.expanded .veh-team-letter,
-.mobile-layout .building-unit.expanded .building-team-letter { left: -44px; bottom: -36px; font-size: 12px; }
+.mobile-layout .building-unit.expanded .building-team-letter { left: -44px; bottom: -36px; font-size: var(--fs-xs); }
 
 .mobile-layout .op-marker.expanded:not(.connect):not(.dead) .op-rotate-control {
   right: -32px;
@@ -1170,12 +1171,13 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   min-width: 44px;
   min-height: 44px;
 }
-
+@media (hover: hover) {
 .mobile-layout .op-marker:hover .op-fireline,
 .mobile-layout .op-marker:hover .op-info,
 .mobile-layout .op-marker:hover .op-route,
 .mobile-layout .op-marker:hover .op-action-fan {
   display: none;
+}
 }
 
 .mobile-layout .veh-rotate-control,
@@ -1200,7 +1202,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   align-items: center;
   justify-content: center;
   pointer-events: auto;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1;
 }
 
@@ -1246,9 +1248,10 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   display: none !important;
   pointer-events: none !important;
 }
-
+@media (hover: hover) {
 .platform-android.mobile-layout .tm-marker:hover {
   transform: none;
+}
 }
 
 .mobile-layout .tm-marker:not(.expanded) .tm-route,
@@ -1304,7 +1307,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 
 .mobile-fireline-slider {
   position: fixed;
-  z-index: 10020;
+  z-index: var(--z-modal-top);
   width: 180px;
   height: 36px;
   margin: 0;
@@ -1320,7 +1323,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 .platform-android.mobile-layout .veh-fireline i,
 .platform-android.mobile-layout .building-fireline i,
 .platform-android.mobile-layout .tm-fireline i {
-  font-size: 20px !important;
+  font-size: var(--fs-xl) !important;
   line-height: 1;
 }
 
@@ -1337,13 +1340,13 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   justify-content: center;
   padding: 0;
   pointer-events: none;
-  font-size: 11px;
-  z-index: 8;
+  font-size: var(--fs-caption);
+  z-index: var(--z-build);
 }
 
 .platform-android.mobile-layout .veh-marker .veh-refresh-badge {
   position: absolute;
-  z-index: 9;
+  z-index: var(--z-build);
   top: -9px;
   right: -9px;
   display: inline-flex;
@@ -1354,8 +1357,8 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   border: 1px solid rgba(244, 207, 103, .86);
   border-radius: 50%;
   background: rgba(9, 14, 16, .96);
-  color: #f4cf67;
-  font-size: 8px;
+  color: var(--gold-accent);
+  font-size: var(--fs-micro);
   line-height: 1;
   pointer-events: none;
   box-shadow: 0 0 5px rgba(244, 207, 103, .42);
@@ -1406,7 +1409,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   padding: 0 7px;
   overflow: hidden;
   text-overflow: ellipsis;
-  z-index: 14;
+  z-index: var(--z-build);
 }
 
 .platform-android.mobile-layout .veh-marker.expanded .veh-side,
@@ -1487,8 +1490,8 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   bottom: auto !important;
   padding: 0;
   border-radius: 50%;
-  font-size: 15px;
-  z-index: 12;
+  font-size: var(--fs-md);
+  z-index: var(--z-build);
 }
 
 /* 建筑图标为 38px，圆心比 30px 载具多 4px；单独校正，避免操作环偏向左上。 */
@@ -1543,9 +1546,9 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   background: rgba(8, 13, 15, .96);
   color: var(--tm-team);
   box-shadow: 0 2px 8px rgba(0, 0, 0, .52);
-  font-size: 16px;
+  font-size: var(--fs-lg);
   line-height: 1;
-  z-index: 12;
+  z-index: var(--z-build);
   touch-action: none;
   pointer-events: auto !important;
 }
@@ -1571,7 +1574,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   position: absolute;
   left: 50%;
   bottom: max(16px, var(--safe-bottom));
-  z-index: 4800;
+  z-index: var(--z-overlay);
   display: none;
   gap: 8px;
   transform: translateX(-50%);
@@ -1609,7 +1612,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 .mobile-confirm-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1622,21 +1625,21 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   padding: 18px;
   border: 1px solid var(--line-2);
   border-radius: 8px;
-  color: #fff;
+  color: var(--on-solid);
   background: #0b1114;
   box-shadow: 0 14px 42px rgba(0, 0, 0, .65);
 }
 
 .mobile-confirm-dialog h2 {
   margin: 0 0 10px;
-  color: #fff;
-  font-size: 18px;
+  color: var(--on-solid);
+  font-size: var(--fs-lg);
 }
 
 .mobile-confirm-dialog p {
   margin: 0;
-  color: #fff;
-  font-size: 14px;
+  color: var(--on-solid);
+  font-size: var(--fs-md);
   line-height: 1.55;
 }
 
@@ -1653,14 +1656,14 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   padding: 8px 14px;
   border: 1px solid var(--line-2);
   border-radius: 5px;
-  color: #fff;
+  color: var(--on-solid);
   background: #182126;
   font-weight: 700;
 }
 
 .mobile-confirm-actions button.danger {
   border-color: #d74d48;
-  color: #fff;
+  color: var(--on-solid);
   background: #a92f2b;
 }
 
@@ -1710,7 +1713,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   max-width: 94px;
   gap: 4px;
   padding: 3px 6px;
-  font-size: 11px;
+  font-size: var(--fs-caption);
 }
 
 .mobile-layout .toolbar .map-select-btn .map-select-label {
@@ -1746,7 +1749,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   height: 36px;
   min-width: 36px;
   min-height: 36px;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 .mobile-layout .toolbar-draw-divider {
@@ -1773,12 +1776,12 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
 .mobile-layout .toolbar .mode-area .menu-device .map-select-label {
   display: inline;
   flex: 0 0 auto;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
 }
 
 .mobile-layout .toolbar .mode-area .menu-device .map-select-value {
   flex: 0 1 auto;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
 }
 
 .mobile-layout .toolbar .mode-btn,
@@ -1786,7 +1789,7 @@ body:has(.platform-android.mobile-layout) .text-style-panel .tsp-head {
   min-height: 38px;
   height: 38px;
   padding: 3px 6px;
-  font-size: 11px;
+  font-size: var(--fs-caption);
 }
 
 .mobile-layout .toolbar .mode-group {
@@ -1862,11 +1865,12 @@ body:has(.platform-android.mobile-layout) .wg-notes-dock:not(.expanded):not(.col
   transform: scale(var(--mobile-map-marker-scale, .9));
   transform-origin: center;
 }
-
+@media (hover: hover) {
 /* coarse 指针可能留下 sticky :hover；移动端不因此放大点位。 */
 .platform-android.mobile-layout .cap-marker:hover,
 .platform-android.mobile-layout .spawn-marker:hover {
   transform: none;
+}
 }
 
 .platform-android.mobile-layout .cap-marker.selected {
@@ -1875,7 +1879,7 @@ body:has(.platform-android.mobile-layout) .wg-notes-dock:not(.expanded):not(.col
 
 .platform-android.mobile-layout .cap-marker .cap-tag,
 .platform-android.mobile-layout .spawn-marker .spawn-tag {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   padding-inline: 4px;
 }
 
@@ -1968,7 +1972,7 @@ body:has(.platform-android.mobile-layout) .wg-notes-dock:not(.expanded):not(.col
 .platform-android.mobile-layout .mobile-marker-scale-head {
   justify-content: space-between;
   color: var(--tx-2);
-  font-size: 11px;
+  font-size: var(--fs-caption);
 }
 .platform-android.mobile-layout .mobile-marker-scale-head output {
   color: var(--gold);
@@ -1989,12 +1993,12 @@ body:has(.platform-android.mobile-layout) .wg-notes-dock:not(.expanded):not(.col
   border-radius: 2px;
   background: var(--bg-btn);
   color: var(--tx-2);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   touch-action: manipulation;
 }
 .platform-android.mobile-layout .mobile-marker-scale-control small {
   color: var(--tx-4);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
 }
 
 /* 地图分层新增文字注释开关：扩大整行触控区，并让两类子项缩进一致。 */
@@ -2002,7 +2006,7 @@ body:has(.platform-android.mobile-layout) .wg-notes-dock:not(.expanded):not(.col
   min-height: 36px;
   box-sizing: border-box;
   padding-block: 6px;
-  font-size: 11px;
+  font-size: var(--fs-caption);
   touch-action: manipulation;
 }
 .platform-android.mobile-layout .left-panel .layer-list .cb-box {
@@ -2012,7 +2016,7 @@ body:has(.platform-android.mobile-layout) .wg-notes-dock:not(.expanded):not(.col
 }
 .platform-android.mobile-layout .left-panel .layer-list .layer-item.indent {
   padding-left: 30px;
-  font-size: 11px;
+  font-size: var(--fs-caption);
 }
 .platform-android.mobile-layout .left-panel .point-type-list {
   margin-left: 12px;
@@ -2021,7 +2025,7 @@ body:has(.platform-android.mobile-layout) .wg-notes-dock:not(.expanded):not(.col
 .platform-android.mobile-layout .left-panel .point-type-list .layer-item {
   min-height: 36px;
   padding-left: 6px;
-  font-size: 11px;
+  font-size: var(--fs-caption);
 }
 
 .platform-android.mobile-layout .vehicle-refresh-marker img {
@@ -2091,5 +2095,149 @@ body:has(.platform-android.mobile-layout) .wg-notes-dock:not(.expanded):not(.col
   .mobile-layout .toolbar .mode-area .menu-device .map-select-btn {
     width: 100px;
     max-width: 100px;
+  }
+}
+
+/* ==========================================================================
+   触控目标最小尺寸兜底（--touch-min: 44px）
+   --------------------------------------------------------------------------
+   此前 44px 规则是"逐类目补"的点状实现（op-bubble / edit-* / field-support
+   各自写一遍），左侧面板、路线编辑器、记分板等大量控件仍停留在 24-32px。
+   这里改为全局兜底，保证面板与浮层内的可点元素不小于 --touch-min。
+
+   刻意排除的三类（保持原有尺寸）：
+   1. 地图上的兵棋标记本身（22-38px 圆形角标，其上已有显式豁免规则）；
+   2. Leaflet 画布内的编辑手柄（命中半径由 LayerManager 单独放宽）；
+   3. 顶部工具栏按钮：工具栏 flex 高度仅 42-58px，强制 44px 会溢出，
+      且工具栏在移动端为横向滚动、按钮已接近满高。
+   ========================================================================== */
+
+.mobile-layout :where(
+  .left-panel,
+  .point-panel,
+  .point-detail,
+  .deploy-bar,
+  .route-editor-panel,
+  .text-style-panel,
+  .op-bubble,
+  .op-rename,
+  .op-edit-popup,
+  .wg-notes-dock,
+  .tactical-board-modal,
+  .startup-notice-dialog,
+  .mobile-confirm-dialog,
+  .refresh-vehicle-dialog,
+  .shortcut-help-popover,
+  .zone-legend,
+  .runtime-data-notice,
+  .map-region-error,
+  .mode-config-editor,
+  .mode-asset-palette,
+  .mode-mobile-map-actions,
+  .mode-config-mobile-zone-actions,
+  .mode-mobile-context-panel,
+  .mode-mobile-more-panel
+) :where(button, input:not([type='range']):not([type='color']):not([type='checkbox']):not([type='radio']), select, textarea, summary, .layer-item) {
+  min-height: var(--touch-min);
+}
+
+/* 模式编辑器此前显式写了 38px，需要比它更具体才能被兜底覆盖。 */
+.mobile-layout.mode-workbench .mode-config-editor button,
+.mobile-layout.mode-workbench .mode-config-editor input,
+.mobile-layout.mode-workbench .mode-config-editor select,
+.mobile-layout.mode-workbench .mode-config-editor-head-actions button,
+.mobile-layout.mode-workbench .mode-config-editor-head > button {
+  min-height: var(--touch-min);
+}
+
+/* 复选框/单选框：放大可点行高，方块本身保持紧凑以免撑破列表。 */
+.mobile-layout :where(.left-panel, .point-panel, .route-editor-panel, .mode-config-editor) label:has(> .cb-native),
+.mobile-layout :where(.left-panel, .point-panel, .route-editor-panel) :where(.layer-item, .fill-checkbox) {
+  min-height: var(--touch-min);
+}
+
+.mobile-layout :where(.left-panel, .route-editor-panel, .mode-config-editor) .cb-box {
+  min-width: 16px;
+  min-height: 16px;
+}
+
+/* 面板内的分段控件（线型/填充/选择模式等）同样按触控行高处理。 */
+.mobile-layout :where(.left-panel, .route-editor-panel) :where(.ds-seg, .route-editor-choice, .route-editor-segmented) button,
+.mobile-layout .route-editor-member-list button,
+.mobile-layout .route-editor-actions button,
+.mobile-layout .wg-event-grid button,
+.mobile-layout .wg-clear-battle,
+.mobile-layout .wg-unit-tabs > button {
+  min-height: var(--touch-min);
+}
+
+/* 图标-only 的小方按钮必须同时补足宽度，否则只有高度会被拉成竖条。 */
+.mobile-layout :where(
+  .left-panel .wg-reset,
+  .wg-notes-dock > header button,
+  .op-bubble-back,
+  .op-bubble-close,
+  .route-editor-head button,
+  .skill-action-hint > button,
+  .zone-legend-toggle,
+  .deploy-bar-close,
+  .shortcut-help-popover header button,
+  .mode-mobile-context-panel > header button,
+  .mode-mobile-more-panel > header button
+) {
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+}
+
+/* 顶部工具栏的下拉菜单项不受工具栏高度约束，可以按触控行高处理。 */
+.mobile-layout .toolbar .map-select-item,
+.mobile-layout.mode-workbench .map-select-item {
+  min-height: var(--touch-min);
+}
+
+/* 地图缩放控件（Leaflet 自带）。 */
+.mobile-layout .leaflet-control-zoom a {
+  width: var(--touch-min);
+  height: var(--touch-min);
+  line-height: var(--touch-min);
+}
+
+/* ==========================================================================
+   动效偏好支持（prefers-reduced-motion）
+   --------------------------------------------------------------------------
+   模式配置器已有同样处理（styles/mode-config-v2.css），正式版此前完全没有：
+   罗盘旋转的 rAF 缓动、cinematic 演示的整套位移动画、路线提示脉动都会照常
+   播放。此处对齐该处理，并额外关闭 Leaflet 自身的缩放/平移过渡。
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .app *,
+  .app *::before,
+  .app *::after,
+  .mode-workbench *,
+  .mode-workbench *::before,
+  .mode-workbench *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .app .leaflet-pane,
+  .app .leaflet-zoom-animated,
+  .app .leaflet-marker-icon,
+  .app .leaflet-marker-shadow,
+  .app .leaflet-tile,
+  .app .leaflet-fade-anim .leaflet-tile,
+  .mode-workbench .leaflet-pane,
+  .mode-workbench .leaflet-zoom-animated {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  /* 罗盘针与地图旋转在减弱动效下改为瞬时（数值仍精确更新）。 */
+  .app .map-bearing-needle,
+  .app .map-bearing-dial > span,
+  .app .map-rotation-control {
+    transition: none !important;
   }
 }

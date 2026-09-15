@@ -92,7 +92,7 @@ function buildOperatorIcon(op: OperatorUnit, view: Side, connectMode: boolean, p
   return L.divIcon({
     className: 'op-marker-wrap',
     html: `
-      <div class="${classes}" data-op-uid="${op.uid}" tabindex="0" style="--op-team:${team.color};--op-cls:${clsConf.color};--op-side:${sc.bright};--op-side-deep:${sc.deep};--op-team-dark:${darken(team.color)}" title="${profile.name} · ${clsConf.name} · ${status.label} · ${interactionHint}">
+      <div class="${classes}" data-op-uid="${op.uid}" data-kb-unit="operator" data-kb-uid="${op.uid}" tabindex="0" role="button" aria-label="干员 ${op.name}（${profile.name}），方向键移动，Delete 删除" style="--op-team:${team.color};--team-on:${team.onColor};--op-cls:${clsConf.color};--op-side:${sc.bright};--op-side-deep:${sc.deep};--op-team-dark:${darken(team.color)}" title="${profile.name} · ${clsConf.name} · ${status.label} · ${interactionHint}">
         <span class="op-side-ring"></span>
         <span class="op-team-bg"></span>
         <img class="op-cls-main" src="${clsConf.iconUrl}" alt="${clsConf.name}" draggable="false" />

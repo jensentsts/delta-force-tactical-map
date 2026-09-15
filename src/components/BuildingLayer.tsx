@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { Marker, Tooltip, useMap } from 'react-leaflet'
 import * as L from 'leaflet'
 import type { BuildingUnit, OperatorTeam, Side } from '../types'
@@ -22,13 +22,13 @@ function buildingIcon(building: BuildingUnit, view: Side, expanded: boolean): L.
     : ''
   return L.divIcon({
     className: 'building-unit-wrap',
-    html: `<span class="building-unit ${own ? 'own' : 'enemy'} ${expanded ? 'expanded' : ''}" style="--building-side:${sideColor};--building-fill:${team?.color ?? sideColor}"><span class="building-side-ring"></span><span class="building-core"><img class="building-icon" src="${meta.iconUrl}" alt="" draggable="false" /></span><span class="building-action-fan" aria-hidden="true"></span>${sideButton}<button class="building-team-letter" title="${team ? `${team.name}（点击切换队伍）` : '无队伍（点击设置队伍）'}" aria-label="切换建筑所属队伍" onclick="event.stopPropagation();event.preventDefault();window.__buildingTeam('${building.uid}')">${team?.id ?? '–'}</button>${mobileControls}<span class="building-name">${meta.name}</span></span>`,
+    html: `<span class="building-unit ${own ? 'own' : 'enemy'} ${expanded ? 'expanded' : ''}" data-kb-unit="building" data-kb-uid="${building.uid}" tabindex="0" role="button" aria-label="建筑 ${meta.name}，方向键移动，Delete 删除" style="--building-side:${sideColor};--building-fill:${team?.color ?? sideColor};--team-on:${team?.onColor ?? '#ffffff'}"><span class="building-side-ring"></span><span class="building-core"><img class="building-icon" src="${meta.iconUrl}" alt="" draggable="false" /></span><span class="building-action-fan" aria-hidden="true"></span>${sideButton}<button class="building-team-letter" title="${team ? `${team.name}（点击切换队伍）` : '无队伍（点击设置队伍）'}" aria-label="切换建筑所属队伍" onclick="event.stopPropagation();event.preventDefault();window.__buildingTeam('${building.uid}')">${team?.id ?? '–'}</button>${mobileControls}<span class="building-name">${meta.name}</span></span>`,
     iconSize: [38, 38],
     iconAnchor: [19, 19],
   })
 }
 
-function BuildingMarker({ building, view, interactive, onMove, onRotate, onToggleFireLine, onToggleSide, onChangeTeam, onDelete, onStartRoute }: {
+function BuildingMarker({ building, view, interactive, onMove, onRotate, onToggleFireLine, onToggleSide, onChangeTeam, onDelete, onStartRoute, posRef }: {
   building: BuildingUnit
   view: Side
   interactive: boolean
@@ -39,6 +39,7 @@ function BuildingMarker({ building, view, interactive, onMove, onRotate, onToggl
   onChangeTeam: (uid: string, team?: OperatorTeam) => void
   onDelete: (uid: string) => void
   onStartRoute: (uid: string) => void
+  posRef?: MutableRefObject<Record<string, [number, number]>>
 }) {
   const ref = useRef<L.Marker | null>(null)
   const [expanded, setExpanded] = useState(false)
@@ -320,6 +321,12 @@ function BuildingMarker({ building, view, interactive, onMove, onRotate, onToggl
     return () => { if (target.__buildingTeamHandlers) delete target.__buildingTeamHandlers[building.uid] }
   }, [building.uid, building.team, onChangeTeam])
 
+  useEffect(() => {
+    if (!posRef) return
+    posRef.current[building.uid] = [building.lat, building.lng]
+    return () => { delete posRef.current[building.uid] }
+  }, [building.uid, building.lat, building.lng, posRef])
+
   return (
     <Marker
       ref={ref}
@@ -365,7 +372,7 @@ function BuildingMarker({ building, view, interactive, onMove, onRotate, onToggl
   )
 }
 
-export default function BuildingLayer({ buildings, view, interactive, onMove, onRotate, onToggleFireLine, onToggleSide, onChangeTeam, onDelete, onStartRoute }: {
+export default function BuildingLayer({ buildings, view, interactive, onMove, onRotate, onToggleFireLine, onToggleSide, onChangeTeam, onDelete, onStartRoute, posRef }: {
   buildings: BuildingUnit[]
   view: Side
   interactive: boolean
@@ -376,11 +383,13 @@ export default function BuildingLayer({ buildings, view, interactive, onMove, on
   onChangeTeam: (uid: string, team?: OperatorTeam) => void
   onDelete: (uid: string) => void
   onStartRoute: (uid: string) => void
+  /** 实时位置注册表；供键盘方向键移动读取当前位置。 */
+  posRef?: MutableRefObject<Record<string, [number, number]>>
 }) {
   return (
     <>
       {buildings.map((building) => (
-        <BuildingMarker key={building.uid} building={building} view={view} interactive={interactive} onMove={onMove} onRotate={onRotate} onToggleFireLine={onToggleFireLine} onToggleSide={onToggleSide} onChangeTeam={onChangeTeam} onDelete={onDelete} onStartRoute={onStartRoute} />
+        <BuildingMarker key={building.uid} building={building} view={view} interactive={interactive} onMove={onMove} onRotate={onRotate} onToggleFireLine={onToggleFireLine} onToggleSide={onToggleSide} onChangeTeam={onChangeTeam} onDelete={onDelete} onStartRoute={onStartRoute} posRef={posRef} />
       ))}
     </>
   )

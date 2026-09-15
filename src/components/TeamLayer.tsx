@@ -54,7 +54,7 @@ function buildTeamIcon(tm: TeamMarker, view: Side, teamName?: string, expanded =
   return L.divIcon({
     className: 'tm-wrap',
     html: `
-      <div class="tm-marker ${expanded ? 'expanded' : ''}" style="--tm-team:${team.color};--tm-team-dark:${darken(team.color)};--tm-side:${sc.bright};--tm-side-deep:${sc.deep}" title="${team.name}">
+      <div class="tm-marker ${expanded ? 'expanded' : ''}" data-kb-unit="team" data-kb-uid="${tm.uid}" tabindex="0" role="button" aria-label="队标 ${team.name} ${name}，方向键移动，Delete 删除" style="--tm-team:${team.color};--team-on:${team.onColor};--tm-team-dark:${darken(team.color)};--tm-side:${sc.bright};--tm-side-deep:${sc.deep}" title="${team.name}">
         <span class="tm-side-ring"></span>
         <span class="tm-team-bg"></span>
         <span class="tm-letter">${team.id}</span>
