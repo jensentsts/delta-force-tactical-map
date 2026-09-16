@@ -149,8 +149,14 @@ export function exclusiveBoundaryEdges(
 }
 
 /**
- * 过滤掉"被任一环的边覆盖"的散边（用于已经按归属拆分好、不能再当成闭合环
- * 参与抵消的线段集合——例如攻/防活动区按重叠关系切开后的外侧部分）。
+ * 从散边中挖掉"与任一环的边重合"的部分（用于已经按归属拆分好、不能再当成
+ * 闭合环参与抵消的线段集合——例如攻/防活动区按重叠关系切开后的外侧部分）。
+ *
+ * 为什么不能只做"整条边被覆盖才丢弃"：真实数据里活动区常用**一条长边**对齐
+ * 交战区的**多条短边**（顶点密度不同）。整条判定时长边两端点落不到任何一条
+ * 短边上，裁剪漏掉，于是粗虚线与白色实线并排画出，白线被顶成"断线"。
+ * 这里改为把环边的端点**投影**到待裁剪边上作为切点，先切开再逐子段判定，
+ * 长边只挖掉真正重合的那几段，其余部分保留。
  */
 export function clipEdgesByRings(
   segments: Array<[LngLat, LngLat]>,
@@ -166,11 +172,55 @@ export function clipEdgesByRings(
       if (edge) covering.push(edge)
     }
   })
-  return segments.filter(([a, b]) => {
+
+  /** 点 p 在线段 e 上的投影参数 t；不在容差内返回 null。 */
+  const projectionT = (p: PixelPoint, ap: PixelPoint, bp: PixelPoint): number | null => {
+    const dx = bp.x - ap.x
+    const dy = bp.y - ap.y
+    const lengthSq = dx * dx + dy * dy
+    if (lengthSq < 1e-9) return null
+    const t = ((p.x - ap.x) * dx + (p.y - ap.y) * dy) / lengthSq
+    if (t <= 0 || t >= 1) return null
+    const cross = Math.abs((p.x - ap.x) * dy - (p.y - ap.y) * dx) / Math.sqrt(lengthSq)
+    return cross <= tolerance ? t : null
+  }
+
+  const result: Array<[LngLat, LngLat]> = []
+  for (const [a, b] of segments) {
     const edge = toEdge(a, b, project, -1)
-    if (!edge) return false // 退化边不保留
-    return !covering.some((other) => edgeCoveredBy(edge, other, tolerance))
-  })
+    if (!edge) continue // 退化边不保留
+    // 1) 收集切点：所有"贴上"该边的环边端点投影
+    const cuts = [0, 1]
+    for (const other of covering) {
+      if (!boxesNear(edge, other, tolerance)) continue
+      const t1 = projectionT(other.ap, edge.ap, edge.bp)
+      if (t1 !== null) cuts.push(t1)
+      const t2 = projectionT(other.bp, edge.ap, edge.bp)
+      if (t2 !== null) cuts.push(t2)
+    }
+    cuts.sort((x, y) => x - y)
+    // 2) 逐子段判定：中点贴上任一环边 → 该子段重合，丢弃
+    for (let k = 0; k + 1 < cuts.length; k++) {
+      const t0 = cuts[k]
+      const t1 = cuts[k + 1]
+      if (t1 - t0 < 1e-9) continue
+      const lerpP = (t: number): PixelPoint => ({
+        x: edge.ap.x + (edge.bp.x - edge.ap.x) * t,
+        y: edge.ap.y + (edge.bp.y - edge.ap.y) * t,
+      })
+      const lerpLL = (t: number): LngLat => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+      const mid = lerpP((t0 + t1) / 2)
+      const overlapped = covering.some((other) => boxesNear(edge, other, tolerance) && pointOnEdge(mid, other, tolerance))
+      if (overlapped) continue
+      const sa = lerpLL(t0)
+      const sb = lerpLL(t1)
+      const sp = lerpP(t0)
+      const sq = lerpP(t1)
+      if (Math.hypot(sq.x - sp.x, sq.y - sp.y) < MIN_EDGE_LENGTH_PX) continue
+      result.push([sa, sb])
+    }
+  }
+  return result
 }
 
 /** 端点 key：把像素点量化到容差网格，用于拼接时判断"同一点"。 */
