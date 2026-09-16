@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { Polyline } from 'react-leaflet'
 import { layerPane } from '../config/mapLayers'
 import { useStageBoundaries, type StageBoundaryOwner } from '../utils/stageBoundaries'
@@ -52,36 +51,38 @@ export default function ActivityZones({
     frontline: false,
   })
 
-  const lines = useMemo(
-    () => [...boundaries.activityLines, ...boundaries.contestedLines],
-    [boundaries.activityLines, boundaries.contestedLines],
-  )
+  const activityLines = boundaries.activityLines
+  const contestedLines = boundaries.contestedLines
 
-  if (!visible || lines.length === 0) return null
+  if (!visible || (activityLines.length === 0 && contestedLines.length === 0)) return null
+
+  const renderLine = (line: (typeof activityLines)[number], pane: string) => (
+    <Polyline
+      pane={pane}
+      key={line.key}
+      positions={line.points}
+      pathOptions={{
+        color: OWNER_COLOR[line.owner],
+        // 交战区域（白色）稍细，活动区边框稍粗；两者共享边只画白色那一条
+        weight: line.owner === 'contested' ? 2 : 2.4,
+        opacity: line.owner === 'contested' ? 0.95 : 0.9,
+        dashArray: line.owner === 'contested' ? '0' : '6 4',
+        fillColor: OWNER_COLOR[line.owner],
+        fillOpacity: 0,
+        lineJoin: 'round',
+        lineCap: 'round',
+        className: line.owner === 'contested' ? 'demo-map-capture' : 'demo-map-activity',
+        // 活动区纯视觉背景，永久禁用交互（无选中/高亮/提示）
+        interactive: false,
+      }}
+    />
+  )
 
   return (
     <>
-      {lines.map((line) => (
-        <Polyline
-          pane={layerPane('activityZonePane')}
-          key={line.key}
-          positions={line.points}
-          pathOptions={{
-            color: OWNER_COLOR[line.owner],
-            // 交战区域（白色）稍细，活动区边框稍粗；两者共享边只画白色那一条
-            weight: line.owner === 'contested' ? 2 : 2.4,
-            opacity: line.owner === 'contested' ? 0.95 : 0.9,
-            dashArray: line.owner === 'contested' ? '0' : '6 4',
-            fillColor: OWNER_COLOR[line.owner],
-            fillOpacity: 0,
-            lineJoin: 'round',
-            lineCap: 'round',
-            className: line.owner === 'contested' ? 'demo-map-capture' : 'demo-map-activity',
-            // 活动区纯视觉背景，永久禁用交互（无选中/高亮/提示）
-            interactive: false,
-          }}
-        />
-      ))}
+      {/* 攻/守活动区边界在下（410），交战区白色边界在上（420） */}
+      {activityLines.map((line) => renderLine(line, layerPane('activityZonePane')))}
+      {contestedLines.map((line) => renderLine(line, layerPane('contestedZonePane')))}
     </>
   )
 }

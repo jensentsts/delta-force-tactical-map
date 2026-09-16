@@ -80,7 +80,8 @@ export const MAP_LAYER_ORDER: readonly MapLayerSpec[] = [
   // tilePane(200) / overlayPane(400) / markerPane(600) / tooltipPane(650) 不在此表重排。
 
   // ---- 自定义层：边界线（必须在所有图标之下，见用户需求：瓦片<边界线<图标<弹出面板） ----
-  { pane: 'activityZonePane', z: 410, label: '区域边界线（攻守活动区/交战区/阶段防线）' },
+  { pane: 'activityZonePane', z: 410, label: '攻/守活动区与阶段防线边界线' },
+  { pane: 'contestedZonePane', z: 420, label: '交战区边界线（白色，须在攻/守活动区边界线之上）' },
 
   // ---- 自定义层：图标（地图静态信息） ----
   { pane: 'mapPropPane', z: 500, label: '地图道具（弹药箱/固定机枪/岸防炮/滑索/电梯）' },

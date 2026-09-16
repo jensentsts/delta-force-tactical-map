@@ -7095,6 +7095,8 @@ input[type='range']:focus-visible {
 }
 
 .cap-marker .cap-tag {
+  /* 需求：据点图标下方文字注释整体隐藏（display:none，不参与排版、不占位） */
+  display: none;
   position: absolute;
   bottom: -18px;
   left: 50%;
@@ -7253,6 +7255,8 @@ input[type='range']:focus-visible {
 .mode-config-spawn.vehicle-deploy .mode-config-spawn-name { top: 49px; }
 
 .spawn-marker .spawn-tag {
+  /* 需求：复活点图标下方文字注释整体隐藏（display:none，不参与排版、不占位） */
+  display: none;
   position: absolute;
   bottom: -14px;
   left: 50%;

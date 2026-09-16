@@ -187,11 +187,11 @@ export default function PointMarkers({
       ))}
 
       {/* 交战区域边框（据点可占领区域，第 6 项：白色实线；共享边已抵消）。
-          边界线统一走 activityZonePane（410），保证压在所有图标之下 */}
+          白色交战区边界走 contestedZonePane（420），压在攻/守活动区边界线（410）之上 */}
       {captureVisible && boundaries.contestedLines.map((line) => (
         <Polyline
           key={`cap-${activeStage.id}-${line.key}`}
-          pane={layerPane('activityZonePane')}
+          pane={layerPane('contestedZonePane')}
           positions={line.points}
           pathOptions={{
             color: CONTESTED_BORDER_COLOR,
