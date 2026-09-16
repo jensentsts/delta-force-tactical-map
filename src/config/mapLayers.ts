@@ -79,12 +79,14 @@ export const MAP_LAYER_ORDER: readonly MapLayerSpec[] = [
   // ---- 由 Leaflet 内置 pane 承载的层，这里只登记顺序语义 ----
   // tilePane(200) / overlayPane(400) / markerPane(600) / tooltipPane(650) 不在此表重排。
 
-  // ---- 自定义层：区域与地图静态信息 ----
-  { pane: 'activityZonePane', z: 410, label: '活动区域（攻守活动区/大事件区）' },
+  // ---- 自定义层：边界线（必须在所有图标之下，见用户需求：瓦片<边界线<图标<弹出面板） ----
+  { pane: 'activityZonePane', z: 410, label: '区域边界线（攻守活动区/交战区/阶段防线）' },
+
+  // ---- 自定义层：图标（地图静态信息） ----
   { pane: 'mapPropPane', z: 500, label: '地图道具（弹药箱/固定机枪/岸防炮/滑索/电梯）' },
 
   // ---- 自定义层：据点与复活点 ----
-  { pane: 'capturePointPane', z: 620, label: '据点（图标/进度/占领状态，含区域边界线）' },
+  { pane: 'capturePointPane', z: 620, label: '据点（图标/进度/占领状态）' },
   { pane: 'spawnPane', z: 630, label: '复活点与载具部署关联' },
 
   // ---- 自定义层：兵棋单位（必须在据点之上） ----
@@ -206,4 +208,13 @@ export function ensureMapLayerPanes(map: L.Map): void {
     vectorFrames.set(map, frames)
   }
   syncVectorFrames(map, frames)
+
+  // 弹出式面板置顶契约：Leaflet 内置 tooltipPane(650)/popupPane(700) 默认
+  // 会被自定义高层（unitPane 800 ~ drawGizmoPane 1020）盖住，统一抬升到
+  // 所有内容层之上。React 侧的模态/面板（--z-overlay 1000+）渲染在地图容器
+  // 之外，天然更高，无需处理。
+  const tooltipPane = map.getPane('tooltipPane')
+  if (tooltipPane) tooltipPane.style.zIndex = '1040'
+  const popupPane = map.getPane('popupPane')
+  if (popupPane) popupPane.style.zIndex = '1060'
 }

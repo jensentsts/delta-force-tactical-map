@@ -165,11 +165,12 @@ export default function PointMarkers({
 
   return (
     <>
-      {/* 阶段防线区域（第 6 项：白色实线，连续无断点） */}
+      {/* 阶段防线区域（第 6 项：白色实线，连续无断点）。
+          边界线统一走 activityZonePane（410），保证压在所有图标之下 */}
       {frontlineVisible && boundaries.frontlineLines.map((line) => (
         <Polyline
           key={`zone-${activeStage.id}-${line.key}`}
-          pane={layerPane('capturePointPane')}
+          pane={layerPane('activityZonePane')}
           positions={line.points}
           pathOptions={{
             color: FRONTLINE_BORDER_COLOR,
@@ -185,11 +186,12 @@ export default function PointMarkers({
         />
       ))}
 
-      {/* 交战区域边框（据点可占领区域，第 6 项：白色实线；共享边已抵消） */}
+      {/* 交战区域边框（据点可占领区域，第 6 项：白色实线；共享边已抵消）。
+          边界线统一走 activityZonePane（410），保证压在所有图标之下 */}
       {captureVisible && boundaries.contestedLines.map((line) => (
         <Polyline
           key={`cap-${activeStage.id}-${line.key}`}
-          pane={layerPane('capturePointPane')}
+          pane={layerPane('activityZonePane')}
           positions={line.points}
           pathOptions={{
             color: CONTESTED_BORDER_COLOR,

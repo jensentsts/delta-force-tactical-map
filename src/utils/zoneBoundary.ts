@@ -39,7 +39,7 @@ export const SHARED_EDGE_TOLERANCE_PX = 1.6
 /** 退化边（长度小于该值）直接忽略 */
 const MIN_EDGE_LENGTH_PX = 0.8
 
-interface Edge {
+export interface Edge {
   a: LngLat
   b: LngLat
   ap: PixelPoint
@@ -110,7 +110,7 @@ function edgeCoveredBy(e: Edge, other: Edge, tolerance: number): boolean {
  * 返回值同时给出边数组与共享集合，二者引用同一批对象——调用方**必须**用这里
  * 返回的数组做过滤，否则重新构造的 Edge 对象无法被 Set 命中（引用不相等）。
  */
-function collectSharedEdges(rings: Ring[], project: ProjectFn, tolerance: number): { edges: Edge[]; shared: Set<Edge> } {
+export function collectSharedEdges(rings: Ring[], project: ProjectFn, tolerance: number): { edges: Edge[]; shared: Set<Edge> } {
   const edges: Edge[] = []
   rings.forEach((ring, ringIndex) => {
     for (let i = 0; i < ring.length; i++) {
@@ -146,6 +146,31 @@ export function exclusiveBoundaryEdges(
 ): Array<[LngLat, LngLat]> {
   const { edges, shared } = collectSharedEdges(rings, project, tolerance)
   return edges.filter((edge) => !shared.has(edge)).map((edge) => [edge.a, edge.b])
+}
+
+/**
+ * 过滤掉"被任一环的边覆盖"的散边（用于已经按归属拆分好、不能再当成闭合环
+ * 参与抵消的线段集合——例如攻/防活动区按重叠关系切开后的外侧部分）。
+ */
+export function clipEdgesByRings(
+  segments: Array<[LngLat, LngLat]>,
+  rings: Ring[],
+  project: ProjectFn,
+  tolerance: number = 1.6,
+): Array<[LngLat, LngLat]> {
+  if (!segments.length || !rings.length) return segments
+  const covering: Edge[] = []
+  rings.forEach((ring, ringIndex) => {
+    for (let i = 0; i < ring.length; i++) {
+      const edge = toEdge(ring[i], ring[(i + 1) % ring.length], project, ringIndex)
+      if (edge) covering.push(edge)
+    }
+  })
+  return segments.filter(([a, b]) => {
+    const edge = toEdge(a, b, project, -1)
+    if (!edge) return false // 退化边不保留
+    return !covering.some((other) => edgeCoveredBy(edge, other, tolerance))
+  })
 }
 
 /** 端点 key：把像素点量化到容差网格，用于拼接时判断"同一点"。 */
