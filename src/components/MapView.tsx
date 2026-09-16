@@ -357,7 +357,22 @@ function MapRotationControl() {
     // 2) 角度扇区
     const radius = Math.hypot(x, y)
     if (radius < CENTER_DEAD_ZONE_PX) return ''
-    const angle = ((Math.atan2(x, -y) * 180 / Math.PI) + 360) % 360
+    /**
+     * **必须先减去当前 bearing**：整个表盘（`.map-bearing-dial`）被
+     * `rotate(bearing)` 转过了，而指针角度是在屏幕坐标里量的，两者差一个
+     * bearing。漏掉这一步时，表盘上的字母位置是对的、扇区判定却是错的：
+     * bearing=90° 时指针停在 N 上会被判成 E，bearing=137° 时 N 被判成 S
+     * （实测确认）。
+     *
+     * 这里直接读 `map.getBearing()` 而不是 React state：拖动旋转时 state 可能
+     * 落后一帧，会让 hover 判定在相邻扇区之间抖动。
+     *
+     * 命中判定与扇区判定的自洽性：方向按钮是 22px 的圆、圆心在半径 27px 处，
+     * 即角半宽约 23.6°；只要指针落在按钮盒内就必然落在同一个 45° 扇区里，
+     * 因此第 1 级命中永远不会和第 2 级冲突。
+     */
+    const screenAngle = Math.atan2(x, -y) * 180 / Math.PI
+    const angle = ((screenAngle - (map.getBearing?.() ?? 0)) % 360 + 360) % 360
     if (angle >= 315 || angle < 45) return 'north'
     if (angle < 135) return 'east'
     if (angle < 225) return 'south'
