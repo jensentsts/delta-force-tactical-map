@@ -1,4 +1,4 @@
-import type * as L from 'leaflet'
+import * as L from 'leaflet'
 
 /**
  * 地图图层顺序的唯一事实来源。
@@ -17,27 +17,43 @@ import type * as L from 'leaflet'
  *
  * 契约（重要）：图层一旦显式指定 pane，就**不要再设 zIndexOffset**。pane 的
  * z-index 是唯一顺序依据；混用两者会让顺序重新变得不可预测。
+ *
+ * ---------------------------------------------------------------------------
+ * 参考系契约（第二个必须遵守的规则）
+ * ---------------------------------------------------------------------------
+ *
+ * leaflet-rotate 启用旋转后会建立两个并行的坐标系：
+ *
+ *   · **rotatePane（旋转参考系）**：瓦片 `tilePane` 与 Leaflet 默认矢量层
+ *     `overlayPane` 都在其中。Leaflet 的矢量渲染器（`L.SVG` / `L.Canvas`）写出的
+ *     坐标就是这一套——`_getNewPixelOrigin()` / `_getPaddedPixelBounds()` 都按
+ *     bearing 做过旋转补偿。
+ *   · **norotatePane（未旋转参考系）**，等价于 mapPane 坐标系：`markerPane` /
+ *     `tooltipPane` / `popupPane` 在里面；`Marker._setPos` 会先调用
+ *     `map.rotatedPointToMapPanePoint()` 把坐标换算过来。
+ *
+ * 本项目的自定义 pane **全部挂在 norotatePane 下**（这是 Marker 的硬性要求：见下），
+ * 但**矢量图层放在 norotatePane 里会整体错位**：渲染器仍旧写旋转参考系的坐标，
+ * 而 pane 没有跟着旋转，于是所有 Polyline / Polygon / Circle 会绕地图中心偏转一个
+ * bearing。实测 bearing=30° 时断层阶段的活动区边界最大偏移 450px，并且缩放后按
+ * 比例继续放大（这正是"旋转之后缩放时边界线位置错误"）。
+ *
+ * 为什么不能简单地把矢量层挪进 rotatePane：rotatePane 带 transform，是一个层叠
+ * 上下文，它整体位于 norotatePane 子树之下——一旦挪进去，所有矢量层都会沉到
+ * **全部 Marker 之下**，`capturePointPane` 与 `unitPane`、绘制层与兵棋图标之间的
+ * 顺序契约立刻失效。
+ *
+ * 因此这里采用"每个 pane 内部再放一个矢量参考系容器"的方案：
+ *   · 每个自定义 pane 里创建一个 `data-vector-frame` 容器，它镜像 rotatePane 的
+ *     transform（leaflet-rotate 只在 `setBearing()` 里改写该 transform，并派发
+ *     `rotate` 事件，因此同步点唯一且明确）；
+ *   · 该 pane 的矢量渲染器被**预先注册**进 `map._paneRenderers`，于是
+ *     `map.getRenderer()` 会按 pane 名命中它，所有矢量图层都落进参考系容器；
+ *   · Marker 不受影响：它们直接挂在 pane 上（norotatePane 坐标系）。
+ * 结果：矢量与 Marker 仍处在同一个 pane、同一个 z-index 区间，图层顺序一字不变，
+ * 而两者的参考系各自正确。调用方不需要区分矢量与 Marker，照旧只写
+ * `pane={layerPane('xxx')}`。
  */
-
-/**
- * 父 pane 类型。
- *
- * **本项目全部自定义层都用 norotate，这是必须的，不是可选项。**
- *
- * 原因（已实测确认）：leaflet-rotate 的 Marker._setPos 会先做
- * `rotatedPointToMapPanePoint(pos)`，即产出 **mapPane 参考系**的坐标；
- * 而 rotatePane 的可见坐标系是相对于 rotatePane 自身的（两者相差
- * rotatePanePos 与 bearing）。所以放在 rotatePane 里的 Marker 只有在
- * bearing=0 时才恰好对齐；一旦旋转，再用缩放改变比例，图标就会相对地理
- * 位置漂移（实测三张图的标记在 rotate+zoom 后偏移各不相同：+18/+22、
- * +166/+208、−75/−19，即比例错误而非整体平移）。
- *
- * leaflet-rotate 自己也是这么做的：`_initPanes` 在启用旋转时把
- * tilePane/overlayPane 挂在 rotatePane 下，而 shadowPane/markerPane/
- * tooltipPane/popupPane **全部挂在 norotatePane** 下。
- * 因此这里让所有自定义层与内置 Marker 层保持一致。
- */
-export type MapLayerParent = 'rotate' | 'norotate'
 
 export interface MapLayerSpec {
   /** Pane 名称（会变成 `leaflet-<name>-pane` 类名）。 */
@@ -46,11 +62,6 @@ export interface MapLayerSpec {
   z: number
   /** 该层的用途说明，便于日后维护者判断插入位置。 */
   label: string
-  /**
-   * 挂到哪个父 pane 下。默认 norotatePane（与 Leaflet 内置 markerPane 一致）。
-   * 只有纯矢量且确实需要贴着地图一起转的层才考虑 rotate——目前没有这样的层。
-   */
-  parent?: MapLayerParent
 }
 
 /**
@@ -58,8 +69,11 @@ export interface MapLayerSpec {
  *
  * 关键约定：
  * - `props`（弹药箱/防空炮/滑索等地图道具）必须在 `capturePoints`（据点）之下；
- * - `units`（步兵/载具/建筑/队标等兵棋）必须在 `capturePoints` 之上；
+ * - `units`（步兵/载具/建筑/队标等兵棋）必须在 `capturePoints`（据点）之上；
  * - 绘制图形在一切矢量之上，编辑手柄/文本标记再上一层。
+ *
+ * 表中所有 pane 都是 norotatePane 的子节点；矢量图层由 pane 内部的参考系容器
+ * 承载（见文件头说明），无需在表里区分矢量与 Marker。
  */
 export const MAP_LAYER_ORDER: readonly MapLayerSpec[] = [
   // ---- 由 Leaflet 内置 pane 承载的层，这里只登记顺序语义 ----
@@ -70,7 +84,7 @@ export const MAP_LAYER_ORDER: readonly MapLayerSpec[] = [
   { pane: 'mapPropPane', z: 500, label: '地图道具（弹药箱/固定机枪/岸防炮/滑索/电梯）' },
 
   // ---- 自定义层：据点与复活点 ----
-  { pane: 'capturePointPane', z: 620, label: '据点（图标/进度/占领状态）' },
+  { pane: 'capturePointPane', z: 620, label: '据点（图标/进度/占领状态，含区域边界线）' },
   { pane: 'spawnPane', z: 630, label: '复活点与载具部署关联' },
 
   // ---- 自定义层：兵棋单位（必须在据点之上） ----
@@ -110,35 +124,86 @@ export function layerZ(pane: string): number {
   return spec.z
 }
 
+/** 矢量参考系容器的标记属性（同时方便在浏览器里直接排查）。 */
+const VECTOR_FRAME_ATTR = 'data-vector-frame'
+
+/** leaflet-rotate 写 transform 用的 CSS 属性名（现代引擎下就是 `transform`）。 */
+const TRANSFORM_PROP = (L.DomUtil as unknown as { TRANSFORM?: string }).TRANSFORM || 'transform'
+
 /**
- * 取指定图层的父 pane 元素。
- * 默认 norotatePane —— 与 leaflet-rotate 给内置 markerPane 的选择保持一致，
- * 这样 Marker._setPos 产出的 mapPane 参考系坐标才能落在正确的坐标系里。
+ * map → 该地图上已创建的矢量参考系容器。
+ *
+ * 用 WeakMap 而不是模块级数组：同一页面可能存在多个 map 实例（切换地图时
+ * MapContainer 会带 key 重建），容器的归属必须跟着 map 走。
  */
-function parentPaneOf(map: L.Map, spec: MapLayerSpec): HTMLElement | undefined {
-  const parentName = spec.parent === 'rotate' ? 'rotatePane' : 'norotatePane'
-  return map.getPane(parentName) ?? map.getPane('mapPane') ?? undefined
+const vectorFrames = new WeakMap<L.Map, HTMLElement[]>()
+
+/** 取自定义 pane 的父 pane：marker 必须留在 norotatePane 参考系里。 */
+function layerPaneParent(map: L.Map): HTMLElement | undefined {
+  return map.getPane('norotatePane') ?? map.getPane('mapPane') ?? undefined
 }
 
 /**
- * 按顺序表创建全部自定义 pane。幂等：已存在的 pane 只校正 z-index。
+ * 把 rotatePane 的 transform 同步到全部矢量参考系容器。
+ *
+ * 只做这一件事就够：参考系容器与 rotatePane 是同一个父节点（mapPane）下的兄弟，
+ * transform 相同即代表"两者坐标系的映射完全一致"，与平移/缩放/尺寸变化无关。
+ * leaflet-rotate 只在 `setBearing()` 中改写 rotatePane 的 transform，并派发
+ * `rotate` 事件，所以这里只需挂在 `rotate` 上。
+ */
+function syncVectorFrames(map: L.Map, frames: HTMLElement[]): void {
+  // 未启用旋转时没有 rotatePane，参考系就是恒等变换（清掉 transform）
+  const rotatePane = map.getPane('rotatePane')
+  const transform = rotatePane ? rotatePane.style.getPropertyValue(TRANSFORM_PROP) : ''
+  for (const frame of frames) {
+    if (frame.style.getPropertyValue(TRANSFORM_PROP) === transform) continue
+    if (transform) frame.style.setProperty(TRANSFORM_PROP, transform)
+    else frame.style.removeProperty(TRANSFORM_PROP)
+  }
+}
+
+/**
+ * 按顺序表创建全部自定义 pane，并为每个 pane 准备矢量参考系容器与渲染器。
+ *
+ * 幂等：已存在的 pane / 容器 / 渲染器只校正，不重建；重复调用（本函数会从
+ * MapView、LayerManager、RouteLayer 三处被调用）不会叠加事件监听。
+ *
  * 必须在图层渲染前调用（放在 MapContainer 的子组件里即可）。
  */
 export function ensureMapLayerPanes(map: L.Map): void {
+  const frames = vectorFrames.get(map) ?? []
+  // Leaflet 内部按 pane 名缓存渲染器；预先注册即可让矢量图层落进参考系容器
+  const renderers = (map as unknown as { _paneRenderers?: Record<string, L.Renderer> })._paneRenderers
+
   for (const spec of MAP_LAYER_ORDER) {
-    const existing = map.getPane(spec.pane)
-    if (existing) {
-      existing.style.zIndex = String(spec.z)
-      continue
+    const pane = map.getPane(spec.pane) ?? map.createPane(spec.pane, layerPaneParent(map))
+    if (!pane) continue
+    pane.style.zIndex = String(spec.z)
+
+    let frame = pane.querySelector<HTMLElement>(`[${VECTOR_FRAME_ATTR}]`)
+    if (!frame) {
+      frame = L.DomUtil.create('div', 'leaflet-pane leaflet-vector-frame', pane)
+      frame.setAttribute(VECTOR_FRAME_ATTR, spec.pane)
     }
-    const pane = map.createPane(spec.pane, parentPaneOf(map, spec))
-    if (pane) {
-      pane.style.zIndex = String(spec.z)
-      // 注意：这里**不能**设 pointer-events:none。Leaflet 的 marker pane 规则是
-      // `.leaflet-pane > svg path, .leaflet-tile-container { pointer-events: none }`
-      // 加上 `.leaflet-marker-icon, .leaflet-interactive { pointer-events: auto }`，
-      // divIcon 标记带 leaflet-interactive 类因此可交互；若给 pane 加
-      // pointer-events:none，会让**所有**子标记一起失效。
+    if (!frames.includes(frame)) frames.push(frame)
+
+    // 注意：这里**不能**给 pane 设 pointer-events:none。Leaflet 的规则是
+    // `.leaflet-pane > svg path, .leaflet-tile-container { pointer-events: none }`
+    // 加 `.leaflet-marker-icon, .leaflet-interactive { pointer-events: auto }`：
+    // divIcon 标记靠 `.leaflet-interactive` 拿到事件，给 pane 加 pointer-events:none
+    // 会让**所有**子标记一起失效。参考系容器尺寸为 0，本身不会拦截指针事件。
+    if (renderers && !renderers[spec.pane] && L.Browser.svg) {
+      // pane 允许传元素（map.getPane 对非字符串原样返回），这里借它把渲染器
+      // 挂进参考系容器；类型上仍是 string，故做一次收窄。
+      renderers[spec.pane] = new L.SVG({ pane: frame as unknown as string })
     }
   }
+
+  if (!vectorFrames.has(map)) {
+    const sync = () => syncVectorFrames(map, frames)
+    map.on('rotate', sync)
+    map.once('unload', () => map.off('rotate', sync))
+    vectorFrames.set(map, frames)
+  }
+  syncVectorFrames(map, frames)
 }
