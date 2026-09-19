@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { useMap } from 'react-leaflet'
 import type { TacticalObjectiveState, Side, StageConfig } from '../types'
 import {
   chainEdges,
@@ -31,6 +30,19 @@ export interface StageBoundaries {
 const EMPTY: StageBoundaries = { activityLines: [], contestedLines: [], frontlineLines: [] }
 
 /**
+ * 几何判定的固定参考比例：1 个地图单位 ≈ 1.5 像素（默认缩放 3.2 下实测约 1.47，
+ * 与 scripts/check-stage-rings.cjs 的 SCALE 一致）。
+ *
+ * 为什么不能用 `map.latLngToContainerPoint`：共边抵消/折线拼接的容差都是
+ * **像素**单位（SHARED_EDGE_TOLERANCE_PX），用实时投影会把判定结果绑定到
+ * "计算那一刻的缩放级别"——而本 hook 的依赖里没有缩放，初次加载（fitBounds
+ * 的小比例）算出的裁剪结果会一直留到下一次 objectiveStates 变化才重算，
+ * 表现为"初次加载时攻/守边界线压盖交战区白线，点一次据点进度后才正确"。
+ * 用固定比例后几何判定与缩放彻底无关，初次加载与重绘结果一致。
+ */
+const BOUNDARY_REFERENCE_SCALE = 1.5
+
+/**
  * 计算当前阶段的全部区域边界线，并消除它们之间的共享边。
  *
  * 为什么需要：攻守活动区、据点可占领区域（交战区）在数据上普遍共边，
@@ -46,15 +58,13 @@ export function useStageBoundaries(
   objectiveStates: Record<string, TacticalObjectiveState> | undefined,
   enabled: { activity: boolean; capture: boolean; frontline: boolean },
 ): StageBoundaries {
-  const map = useMap()
-
   return useMemo(() => {
     if (!stage) return EMPTY
-    // 投影到像素做几何比较（CRS.Simple 下 containerPoint 与经纬度线性对应）
-    const project: ProjectFn = ([lat, lng]) => {
-      const point = map.latLngToContainerPoint([lat, lng])
-      return { x: point.x, y: point.y }
-    }
+    // 固定比例投影（缩放无关，见 BOUNDARY_REFERENCE_SCALE 的说明）。
+    const project: ProjectFn = ([lat, lng]) => ({
+      x: lng * BOUNDARY_REFERENCE_SCALE,
+      y: lat * BOUNDARY_REFERENCE_SCALE,
+    })
 
     // ---- 1) 活动区：参与共享边抵消，按 own/enemy 着色 ----
     const activityRings: Array<{ ring: Ring; owner: StageBoundaryOwner }> = []
@@ -141,7 +151,7 @@ export function useStageBoundaries(
     }))
 
     return { activityLines, contestedLines, frontlineLines }
-  }, [enabled.activity, enabled.capture, enabled.frontline, map, objectiveStates, stage, view])
+  }, [enabled.activity, enabled.capture, enabled.frontline, objectiveStates, stage, view])
 }
 
 /** 判定为"贴边/重合"的距离容差（经纬度单位）。真实数据里两环重合边顶点偏差
