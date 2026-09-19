@@ -63,6 +63,18 @@ function toEdge(a: LngLat, b: LngLat, project: ProjectFn, ringIndex: number): Ed
   }
 }
 
+/** 环数组 → 边数组（隐式闭合；退化零长边丢弃；供各抵消/裁剪算法共用）。 */
+function edgesOfRings(rings: Ring[], project: ProjectFn): Edge[] {
+  const edges: Edge[] = []
+  rings.forEach((ring, ringIndex) => {
+    for (let i = 0; i < ring.length; i++) {
+      const edge = toEdge(ring[i], ring[(i + 1) % ring.length], project, ringIndex)
+      if (edge) edges.push(edge)
+    }
+  })
+  return edges
+}
+
 /** 点 p 是否落在（或极接近）线段 e 上。 */
 function pointOnEdge(p: PixelPoint, e: Edge, tolerance: number): boolean {
   const dx = e.bp.x - e.ap.x
@@ -111,13 +123,7 @@ function edgeCoveredBy(e: Edge, other: Edge, tolerance: number): boolean {
  * 返回的数组做过滤，否则重新构造的 Edge 对象无法被 Set 命中（引用不相等）。
  */
 export function collectSharedEdges(rings: Ring[], project: ProjectFn, tolerance: number): { edges: Edge[]; shared: Set<Edge> } {
-  const edges: Edge[] = []
-  rings.forEach((ring, ringIndex) => {
-    for (let i = 0; i < ring.length; i++) {
-      const edge = toEdge(ring[i], ring[(i + 1) % ring.length], project, ringIndex)
-      if (edge) edges.push(edge)
-    }
-  })
+  const edges = edgesOfRings(rings, project)
   const shared = new Set<Edge>()
   // 边界数量在千级以内，简单双重循环 + 包围盒早退足够；
   // boxesNear 会把绝大多数无关边对直接跳过。
@@ -165,13 +171,7 @@ export function clipEdgesByRings(
   tolerance: number = 1.6,
 ): Array<[LngLat, LngLat]> {
   if (!segments.length || !rings.length) return segments
-  const covering: Edge[] = []
-  rings.forEach((ring, ringIndex) => {
-    for (let i = 0; i < ring.length; i++) {
-      const edge = toEdge(ring[i], ring[(i + 1) % ring.length], project, ringIndex)
-      if (edge) covering.push(edge)
-    }
-  })
+  const covering = edgesOfRings(rings, project)
 
   /** 点 p 在线段 e 上的投影参数 t；不在容差内返回 null。 */
   const projectionT = (p: PixelPoint, ap: PixelPoint, bp: PixelPoint): number | null => {

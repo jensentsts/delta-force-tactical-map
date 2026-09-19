@@ -1,22 +1,12 @@
-import { Marker, Polyline, useMap } from 'react-leaflet'
+import { Marker, useMap } from 'react-leaflet'
 import { layerPane } from '../config/mapLayers'
 import { useStageBoundaries } from '../utils/stageBoundaries'
+import BoundaryLines from './BoundaryLines'
 import * as L from 'leaflet'
 import type { CapturePoint, PointStatus, Side, StageConfig, TacticalObjectiveState } from '../types'
 import { POINT_ICON_BASE } from '../config/points'
 
 const ZONE_ZOOM = 4.4
-
-/**
- * 交战区域（据点可占领区域）与阶段防线的边框颜色：**白色实线**（第 6 项需求）。
- * 原来据点区域按归属取绿/红/金，防线取绿/红虚线；现在统一为白色实线，
- * 让"哪里在打"用一条连续的中性线表达，攻守归属由区域填充与据点图标表达。
- */
-const CONTESTED_BORDER_COLOR = '#ffffff'
-const FRONTLINE_BORDER_COLOR = '#ffffff'
-/** 边界线宽（像素） */
-const CONTESTED_BORDER_WEIGHT = 2
-const FRONTLINE_BORDER_WEIGHT = 2.5
 
 /**
  * 据点标记（图标/进度环/状态色）沿用统一三色规则：
@@ -167,44 +157,25 @@ export default function PointMarkers({
     <>
       {/* 阶段防线区域（第 6 项：白色实线，连续无断点）。
           边界线统一走 activityZonePane（410），保证压在所有图标之下 */}
-      {frontlineVisible && boundaries.frontlineLines.map((line) => (
-        <Polyline
-          key={`zone-${activeStage.id}-${line.key}`}
+      {frontlineVisible && (
+        <BoundaryLines
+          lines={boundaries.frontlineLines}
           pane={layerPane('activityZonePane')}
-          positions={line.points}
-          pathOptions={{
-            color: FRONTLINE_BORDER_COLOR,
-            weight: FRONTLINE_BORDER_WEIGHT,
-            opacity: 0.92,
-            dashArray: '0',
-            className: 'demo-map-frontline',
-            lineJoin: 'round',
-            lineCap: 'round',
-            // 绘制工具激活时禁用交互：否则多边形拦截鼠标事件，战斗区域内无法绘制
-            interactive,
-          }}
+          interactive={interactive}
+          keyPrefix={`zone-${activeStage.id}-`}
         />
-      ))}
+      )}
 
       {/* 交战区域边框（据点可占领区域，第 6 项：白色实线；共享边已抵消）。
           白色交战区边界走 contestedZonePane（420），压在攻/守活动区边界线（410）之上 */}
-      {captureVisible && boundaries.contestedLines.map((line) => (
-        <Polyline
-          key={`cap-${activeStage.id}-${line.key}`}
+      {captureVisible && (
+        <BoundaryLines
+          lines={boundaries.contestedLines}
           pane={layerPane('contestedZonePane')}
-          positions={line.points}
-          pathOptions={{
-            color: CONTESTED_BORDER_COLOR,
-            weight: CONTESTED_BORDER_WEIGHT,
-            opacity: 0.95,
-            dashArray: '0',
-            className: 'demo-map-capture',
-            lineJoin: 'round',
-            lineCap: 'round',
-            interactive,
-          }}
+          interactive={interactive}
+          keyPrefix={`cap-${activeStage.id}-`}
         />
-      ))}
+      )}
 
       {/* 据点标记（A点图标 + "据点A"字样）：仅当前阶段；labelsVisible=false 时整体隐藏 */}
       {labelsVisible &&
