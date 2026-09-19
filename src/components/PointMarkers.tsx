@@ -156,11 +156,14 @@ export default function PointMarkers({
   return (
     <>
       {/* 阶段防线区域（第 6 项：白色实线，连续无断点）。
-          边界线统一走 activityZonePane（410），保证压在所有图标之下 */}
+          白色边界统一走 contestedZonePane（420）：防线与攻/守活动区环普遍存在
+          共边，若同处 activityZonePane（410），同 pane 内叠放由挂载顺序决定，
+          红/绿虚线（ActivityZones 后挂载）会压住白色防线——初次加载时
+          "白线被红/绿盖住"即源于此 */}
       {frontlineVisible && (
         <BoundaryLines
           lines={boundaries.frontlineLines}
-          pane={layerPane('activityZonePane')}
+          pane={layerPane('contestedZonePane')}
           interactive={interactive}
           keyPrefix={`zone-${activeStage.id}-`}
         />
